@@ -4,10 +4,6 @@ export interface DaytonaRunResult {
   exitCode: number;
 }
 
-/**
- * Execute agent tooling in a Daytona sandbox.
- * Falls back to local passthrough when DAYTONA_API_KEY is not configured.
- */
 export async function runInDaytona(
   script: string,
   language: "python" | "javascript" = "python",
@@ -40,9 +36,6 @@ export async function runInDaytona(
   return (await response.json()) as DaytonaRunResult;
 }
 
-/**
- * Optional: summarize scraped research in an isolated environment.
- */
 export async function summarizeResearchInSandbox(
   snippets: string[],
 ): Promise<string> {

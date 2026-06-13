@@ -8,10 +8,6 @@ export interface KimiOptions {
   maxTokens?: number;
 }
 
-/**
- * Call Moonshot Kimi API (OpenAI-compatible endpoint).
- * Uses mock responses when MOONSHOT_API_KEY is not set.
- */
 export async function chatWithKimi(
   messages: KimiMessage[],
   options: KimiOptions = {},

@@ -4,10 +4,6 @@ export interface ResearchResult {
   url: string;
 }
 
-/**
- * Fetch research snippets for a debate topic via Bright Data SERP/scraper API.
- * Falls back to mock data when BRIGHTDATA_API_KEY is not configured.
- */
 export async function fetchResearch(
   query: string,
   side: "pro" | "con",
