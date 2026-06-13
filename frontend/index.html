@@ -287,6 +287,80 @@
       line-height: 1.35;
     }
 
+    .handoff-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 18px;
+      padding: 16px;
+      border: 1px solid rgba(47, 72, 88, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: var(--shadow);
+    }
+
+    .handoff-panel h2 {
+      margin: 0 0 6px;
+      font-size: 1.2rem;
+    }
+
+    .handoff-panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--blueprint);
+      color: var(--steel);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .page-three .brief,
+    .page-three .starter-panel,
+    .page-three .insight-board,
+    .page-three .output-gallery,
+    .page-three .runtime-grid,
+    .page-three .research-panel,
+    .page-three .stage {
+      display: none;
+    }
+
+    .page-three .layout {
+      grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
+    }
+
+    .page-three .panel {
+      box-shadow: none;
+    }
+
+    .page-three .workspace {
+      gap: 14px;
+    }
+
+    .page-three .agent-windows {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .page-three .agent-window {
+      min-height: 320px;
+    }
+
+    .page-three .synthesis {
+      border-left: 4px solid var(--accent);
+    }
+
     .media-hero {
       display: grid;
       grid-template-rows: auto 1fr auto;
@@ -1217,6 +1291,7 @@
 
       .brief,
       .starter-panel,
+      .handoff-panel,
       .insight-board {
         grid-template-columns: 1fr;
       }
@@ -1279,21 +1354,30 @@
   </style>
 </head>
 <body>
-  <main class="shell">
+  <main class="shell page-three">
     <header class="topbar">
       <div class="brand">
         <div class="mark">SG</div>
         <div>
-          <h1>Smoo-G Intelligence Room</h1>
-          <p class="subtitle">Supervise agent research, media evidence, and decision outputs in one business workspace.</p>
+          <h1>Page 3: Live Agent Outputs</h1>
+          <p class="subtitle">Watch the selected agents respond to the topic handed off from the earlier stages.</p>
         </div>
       </div>
       <div class="toolbar">
         <button class="btn secondary icon-btn" id="settingsBtn" type="button" title="Developer settings" aria-label="Developer settings">&#9881;</button>
         <button class="btn secondary" id="resetBtn" type="button">Reset</button>
-        <button class="btn accent" id="runBtn" type="button">Run Simulation</button>
+        <button class="btn accent" id="runBtn" type="button">Run Agents</button>
       </div>
     </header>
+
+    <section class="handoff-panel">
+      <div>
+        <p class="brief-eyebrow">Topic handoff</p>
+        <h2 id="handoffTitle">Waiting for a topic from prior pages.</h2>
+        <p id="handoffCopy">This page can read `topic`, `prompt`, `scenario`, or `decision` from the URL, or `smoo-g-topic` from browser storage.</p>
+      </div>
+      <span class="source-pill" id="topicSourcePill">Fallback topic</span>
+    </section>
 
     <section class="brief">
       <div class="brief-panel">
@@ -1344,9 +1428,9 @@
     <div class="layout">
       <aside class="panel">
         <section class="section">
-          <h2>Scenario</h2>
+          <h2>Run Setup</h2>
           <label>
-            Topic
+            Topic from prior pages
             <textarea id="topicInput">Should a startup use autonomous agents to screen customer-support videos and recommend refunds?</textarea>
           </label>
           <label>
@@ -1481,7 +1565,7 @@
         </section>
 
         <section class="panel synthesis">
-          <h2>Synthesis</h2>
+          <h2>Final Agent Readout</h2>
           <div class="synthesis-grid" id="synthesisGrid"></div>
         </section>
       </section>
@@ -1722,6 +1806,9 @@
     const briefRunBtn = document.querySelector("#briefRunBtn");
     const briefSettingsBtn = document.querySelector("#briefSettingsBtn");
     const sampleButtons = document.querySelectorAll("[data-sample]");
+    const handoffTitle = document.querySelector("#handoffTitle");
+    const handoffCopy = document.querySelector("#handoffCopy");
+    const topicSourcePill = document.querySelector("#topicSourcePill");
     const topicInput = document.querySelector("#topicInput");
     const modeSelect = document.querySelector("#modeSelect");
     const transcript = document.querySelector("#transcript");
@@ -1784,6 +1871,48 @@
         agents: 4
       }
     };
+
+    const topicStorageKeys = [
+      "smoo-g-topic",
+      "smoo-g-scenario",
+      "smoo-g-stage-topic",
+      "smoo-g-page-topic",
+      "agent-sim-topic"
+    ];
+
+    function readPriorTopic() {
+      const params = new URLSearchParams(window.location.search);
+      const queryKeys = ["topic", "prompt", "scenario", "decision", "q"];
+      for (const key of queryKeys) {
+        const value = params.get(key);
+        if (value?.trim()) {
+          return { topic: value.trim(), source: `URL: ${key}` };
+        }
+      }
+
+      for (const key of topicStorageKeys) {
+        const value = localStorage.getItem(key) || sessionStorage.getItem(key);
+        if (value?.trim()) {
+          return { topic: value.trim(), source: `Storage: ${key}` };
+        }
+      }
+
+      return {
+        topic: topicInput.value.trim(),
+        source: "Fallback topic"
+      };
+    }
+
+    function applyPriorTopic() {
+      const handoff = readPriorTopic();
+      topicInput.value = handoff.topic;
+      localStorage.setItem("smoo-g-topic", handoff.topic);
+      handoffTitle.textContent = handoff.topic;
+      handoffCopy.textContent = "Main agent outputs below update in real time when you run the agents.";
+      topicSourcePill.textContent = handoff.source;
+      renderEvidenceGrid(handoff.topic);
+      renderAgentWindows(handoff.topic);
+    }
 
     function loadSettings() {
       try {
@@ -2009,6 +2138,7 @@
       const sample = sampleScenarios[sampleId];
       if (!sample) return;
       topicInput.value = sample.topic;
+      localStorage.setItem("smoo-g-topic", sample.topic);
       modeSelect.value = sample.mode;
       roundsInput.value = sample.rounds;
       agentCountInput.value = sample.agents;
@@ -2016,7 +2146,18 @@
       recommendLearnerRoute();
       resetSimulation();
       renderAgents();
+      applyPriorTopic();
       statusPill.textContent = "Sample loaded";
+    }
+
+    function updateTopicHandoff() {
+      const topic = topicInput.value.trim();
+      if (!topic) return;
+      localStorage.setItem("smoo-g-topic", topic);
+      handoffTitle.textContent = topic;
+      topicSourcePill.textContent = "Manual edit";
+      renderEvidenceGrid(topic);
+      renderAgentWindows(topic);
     }
 
     function renderSkillSummary() {
@@ -2370,16 +2511,16 @@
       const builder = enabledAgents[2]?.name || "Build";
       return [
         {
-          title: "Decision Shape",
-          body: `${primary} makes the strongest case for a narrow pilot, while ${challenger} keeps the launch gated by transparent review and appeal paths.`
+          title: "Lead Output",
+          body: `${primary} recommends the clearest next move and the evidence needed to make it credible.`
         },
         {
-          title: "Operating Rule",
-          body: `Treat "${topic}" as a reversible workflow first: log inputs, keep human override, and measure impact before expanding autonomy.`
+          title: "Challenge Output",
+          body: `${challenger} identifies the biggest assumption, trust issue, or operational risk to resolve before moving forward.`
         },
         {
-          title: "Next Experiment",
-          body: `${builder} should define the smallest test that proves value without expanding the highest-risk surface area. Alignment sits near ${scores.alignment}%.`
+          title: "Next Action",
+          body: `${builder} frames the smallest useful test. Current alignment is ${scores.alignment}% and risk is ${scores.risk}%.`
         }
       ];
     }
@@ -2398,6 +2539,9 @@
       riskMetric.textContent = "-";
 
       const topic = topicInput.value.trim() || "An undecided product strategy";
+      localStorage.setItem("smoo-g-topic", topic);
+      handoffTitle.textContent = topic;
+      topicSourcePill.textContent = "Current run";
       const mode = modeSelect.value;
       const rounds = Number(roundsInput.value);
       const agents = enabledAgents();
@@ -2436,7 +2580,7 @@
 
       statusPill.textContent = "Complete";
       agents.forEach((agent) => updateAgentWindow(agent, "Complete", "Ready for human review, citation check, or follow-up task."));
-      briefCopy.textContent = "Simulation complete. Start with Business Outputs, then scan Decision Signals and Evidence Sources. The transcript remains available for inspection.";
+      briefCopy.textContent = "Simulation complete. Read the live agent cards first, then the final readout.";
       runBtn.disabled = false;
       state.running = false;
     }
@@ -2450,7 +2594,7 @@
       renderOutputGallery();
       emptyState.style.display = "grid";
       statusPill.textContent = "Ready";
-      briefCopy.textContent = "Set the topic, choose the agent perspectives, then watch each agent collect signals, route tokens, and produce an executive synthesis you can inspect.";
+      briefCopy.textContent = "Run the agents to generate live outputs for the handed-off topic.";
       turnMetric.textContent = "0";
       alignmentMetric.textContent = "-";
       riskMetric.textContent = "-";
@@ -2466,6 +2610,7 @@
     runBtn.addEventListener("click", runSimulation);
     briefRunBtn.addEventListener("click", runSimulation);
     resetBtn.addEventListener("click", resetSimulation);
+    topicInput.addEventListener("input", updateTopicHandoff);
     perspectiveForm.addEventListener("submit", addCustomPerspective);
     tokenBudgetInput.addEventListener("input", (event) => {
       state.tokenRouter.budget = Number(event.target.value);
@@ -2503,6 +2648,7 @@
     resetSettingsBtn.addEventListener("click", resetSettings);
 
     loadSettings();
+    applyPriorTopic();
     renderSkillSettings();
     renderAgents();
     syncMetrics();
