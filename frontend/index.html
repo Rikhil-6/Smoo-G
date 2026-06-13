@@ -741,6 +741,94 @@
       line-height: 1.4;
     }
 
+    .evidence-window {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f8fafc, #eef4f7);
+    }
+
+    .evidence-bar {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .evidence-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--accent-2);
+      box-shadow: 0 0 0 4px rgba(180, 83, 9, 0.12);
+    }
+
+    .evidence-search {
+      min-height: 34px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+
+    .source-stack {
+      display: grid;
+      gap: 6px;
+    }
+
+    .source-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 8px;
+      align-items: start;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+
+    .source-row strong {
+      color: var(--ink);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .clip-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      height: 38px;
+    }
+
+    .clip-strip span {
+      display: block;
+      border-radius: 6px;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.82), rgba(17, 24, 39, 0.88)),
+        var(--steel);
+    }
+
+    .clip-strip span:nth-child(2) {
+      background: linear-gradient(135deg, rgba(180, 83, 9, 0.9), rgba(17, 24, 39, 0.84));
+    }
+
+    .clip-strip span:nth-child(3) {
+      background: linear-gradient(135deg, rgba(47, 72, 88, 0.92), rgba(15, 118, 110, 0.78));
+    }
+
     .window-footer {
       display: flex;
       align-items: center;
@@ -2317,6 +2405,15 @@
           </div>
           <div class="window-body" data-window-body>
             <p>${escapeHtml(agent.role)}</p>
+            <div class="evidence-window" data-evidence-window>
+              <div class="evidence-bar"><span class="evidence-dot"></span><span data-evidence-status>Standby evidence window</span></div>
+              <div class="evidence-search" data-evidence-query>Waiting for Daytona / browser task.</div>
+              <div class="source-stack" data-source-stack>
+                <div class="source-row"><strong>Daytona</strong><span>Workspace not started for this run.</span></div>
+                <div class="source-row"><strong>VideoDB</strong><span>No clip evidence selected yet.</span></div>
+              </div>
+              <div class="clip-strip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            </div>
             <div class="trace-line">Waiting for supervised task assignment.</div>
           </div>
           <div class="window-footer">
@@ -2345,6 +2442,29 @@
         <div class="research-tool">${escapeHtml(status)} / ${escapeHtml(agent.tool)}</div>
       `;
       researchFeed.prepend(node);
+    }
+
+    function evidenceRowsFor(agent, topic, status) {
+      return [
+        ["Daytona", `${agent.runtime} ${status}. Search task scoped to this agent only.`],
+        [agent.tool, agent.research.replace("{topic}", topic)],
+        ["VideoDB", `Pull matching clips, transcript beats, and media moments for "${topic}".`]
+      ];
+    }
+
+    function updateEvidenceWindow(agent, status, query, topic) {
+      const node = agentWindows.querySelector(`[data-agent="${agent.id}"]`);
+      if (!node) return;
+      node.querySelector("[data-evidence-status]").textContent = status;
+      node.querySelector("[data-evidence-query]").textContent = query;
+      const stack = node.querySelector("[data-source-stack]");
+      stack.innerHTML = "";
+      evidenceRowsFor(agent, topic, status).forEach(([source, detail]) => {
+        const row = document.createElement("div");
+        row.className = "source-row";
+        row.innerHTML = `<strong>${escapeHtml(source)}</strong><span>${escapeHtml(detail)}</span>`;
+        stack.append(row);
+      });
     }
 
     function updateAgentWindow(agent, status, detail) {
@@ -2554,10 +2674,13 @@
           await new Promise((resolve) => setTimeout(resolve, 120));
           const researchQuery = agent.research.replace("{topic}", topic);
           const tokenRoute = routeForAgent(agent);
+          updateEvidenceWindow(agent, "Routing via token router", `Allocate ${estimateTokensPerAgent()} tokens for ${tokenRoute}`, topic);
           updateAgentWindow(agent, "Routing", `Token route ${tokenRoute}: ${estimateTokensPerAgent()} tokens allocated, fallback ${state.tokenRouter.fallbackProvider}.`);
           addResearchItem(agent, researchQuery, round === 1 ? "searching" : "checking");
+          updateEvidenceWindow(agent, `Searching with ${agent.tool}`, researchQuery, topic);
           updateAgentWindow(agent, "Researching", `Opening ${agent.tool} task: ${researchQuery}`);
           await new Promise((resolve) => setTimeout(resolve, 120));
+          updateEvidenceWindow(agent, "Evidence captured", `VideoDB and browser context ready for ${agent.name}.`, topic);
           const turn = composeTurn(agent, topic, round, mode);
           updateAgentWindow(agent, "Reasoning", turn);
           addMessage(agent, round, turn);
