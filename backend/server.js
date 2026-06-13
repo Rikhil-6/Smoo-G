@@ -36,6 +36,63 @@ const adapters = [
   }
 ];
 
+const tokenRoutes = {
+  economy: {
+    provider: "kimi",
+    modelClass: "small",
+    maxReasoning: "low",
+    bestFor: "Cheap first-pass turns, summaries, and mechanical checks."
+  },
+  balanced: {
+    provider: "kimi",
+    modelClass: "standard",
+    maxReasoning: "medium",
+    bestFor: "Default agent turns with enough context for useful tradeoffs."
+  },
+  "deep-reasoning": {
+    provider: "kimi",
+    modelClass: "reasoning",
+    maxReasoning: "high",
+    bestFor: "Ethical, legal, strategic, or high-impact synthesis turns."
+  },
+  "research-heavy": {
+    provider: "brightdata-playwright",
+    modelClass: "tool-first",
+    maxReasoning: "medium",
+    bestFor: "Web research, browsing, scraping, and evidence collection."
+  }
+};
+
+function createTokenPlan(payload) {
+  const agents = Array.isArray(payload.agents) ? payload.agents : [];
+  const budget = Number(payload.budget || 24000);
+  const reservePercent = Math.min(80, Math.max(0, Number(payload.reservePercent || 20)));
+  const reserveTokens = Math.floor(budget * (reservePercent / 100));
+  const allocatableTokens = Math.max(0, budget - reserveTokens);
+  const perAgent = agents.length > 0 ? Math.floor(allocatableTokens / agents.length) : allocatableTokens;
+  const defaultRoute = payload.defaultRoute || "balanced";
+  const policies = payload.policies || {};
+
+  return {
+    budget,
+    reservePercent,
+    reserveTokens,
+    allocatableTokens,
+    fallbackProvider: payload.fallbackProvider || "kimi",
+    defaultRoute,
+    agents: agents.map((agent) => {
+      const routeId = policies[agent.id] || agent.route || defaultRoute;
+      return {
+        id: agent.id,
+        name: agent.name,
+        route: routeId,
+        allocatedTokens: perAgent,
+        routeConfig: tokenRoutes[routeId] || tokenRoutes[defaultRoute] || tokenRoutes.balanced
+      };
+    })
+  };
+}
+
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
@@ -83,21 +140,43 @@ const server = http.createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/token-router") {
+    sendJson(response, 200, {
+      routes: tokenRoutes,
+      defaults: {
+        budget: 24000,
+        reservePercent: 20,
+        defaultRoute: "balanced",
+        fallbackProvider: "kimi"
+      }
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/token-router/plan") {
+    const body = await readBody(request);
+    const payload = body ? JSON.parse(body) : {};
+    sendJson(response, 200, createTokenPlan(payload));
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/runs") {
     const body = await readBody(request);
     const payload = body ? JSON.parse(body) : {};
+    const tokenPlan = createTokenPlan(payload.tokenRouter || payload);
     sendJson(response, 202, {
       id: `run-${Date.now().toString(36)}`,
       status: "accepted",
       message: "Run orchestration placeholder accepted. Adapter execution is not wired yet.",
-      requestedAgents: payload.agents || []
+      requestedAgents: payload.agents || [],
+      tokenPlan
     });
     return;
   }
 
   sendJson(response, 404, {
     error: "not_found",
-    routes: ["GET /health", "GET /adapters", "POST /runs"]
+    routes: ["GET /health", "GET /adapters", "GET /token-router", "POST /token-router/plan", "POST /runs"]
   });
 });
 

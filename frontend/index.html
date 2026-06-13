@@ -727,6 +727,37 @@
       margin-bottom: 12px;
     }
 
+    .token-router {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      margin-bottom: 12px;
+    }
+
+    .token-router h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .token-policy-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .token-policy {
+      display: grid;
+      grid-template-columns: 1fr minmax(120px, 0.4fr);
+      gap: 10px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
     .settings-actions {
       display: flex;
       gap: 10px;
@@ -765,6 +796,10 @@
       }
 
       .field-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .token-policy {
         grid-template-columns: 1fr;
       }
 
@@ -950,6 +985,43 @@
         </label>
       </div>
 
+      <section class="token-router">
+        <div>
+          <h3>Token Router</h3>
+          <p class="setting-note">Route spend by task type, model provider, and agent budget before a live run starts.</p>
+        </div>
+        <div class="field-grid">
+          <label>
+            Run Budget
+            <input id="tokenBudgetInput" type="number" min="1000" step="500" value="24000">
+          </label>
+          <label>
+            Default Route
+            <select id="tokenDefaultRoute">
+              <option value="balanced">Balanced</option>
+              <option value="economy">Economy</option>
+              <option value="deep-reasoning">Deep reasoning</option>
+              <option value="research-heavy">Research heavy</option>
+            </select>
+          </label>
+        </div>
+        <div class="field-grid">
+          <label>
+            Fallback Provider
+            <select id="tokenFallbackProvider">
+              <option value="kimi">Kimi</option>
+              <option value="local-sim">Local simulation</option>
+              <option value="manual-review">Manual review</option>
+            </select>
+          </label>
+          <label>
+            Reserve For Review
+            <input id="tokenReserveInput" type="number" min="0" max="80" step="5" value="20">
+          </label>
+        </div>
+        <div class="token-policy-list" id="tokenPolicyList"></div>
+      </section>
+
       <div class="settings-grid" id="skillSettings"></div>
 
       <div class="settings-actions">
@@ -1088,7 +1160,14 @@
       running: false,
       developerMode: false,
       skillSources: structuredClone(defaultSkillSources),
-      customPerspectives: []
+      customPerspectives: [],
+      tokenRouter: {
+        budget: 24000,
+        defaultRoute: "balanced",
+        fallbackProvider: "kimi",
+        reservePercent: 20,
+        policies: {}
+      }
     };
 
     const storageKey = "smoo-g-settings";
@@ -1120,6 +1199,11 @@
     const saveSettingsBtn = document.querySelector("#saveSettingsBtn");
     const exportSettingsBtn = document.querySelector("#exportSettingsBtn");
     const resetSettingsBtn = document.querySelector("#resetSettingsBtn");
+    const tokenBudgetInput = document.querySelector("#tokenBudgetInput");
+    const tokenDefaultRoute = document.querySelector("#tokenDefaultRoute");
+    const tokenFallbackProvider = document.querySelector("#tokenFallbackProvider");
+    const tokenReserveInput = document.querySelector("#tokenReserveInput");
+    const tokenPolicyList = document.querySelector("#tokenPolicyList");
     const perspectiveForm = document.querySelector("#perspectiveForm");
     const customPerspectiveName = document.querySelector("#customPerspectiveName");
     const customPerspectiveRole = document.querySelector("#customPerspectiveRole");
@@ -1138,6 +1222,11 @@
         }));
         state.customPerspectives = Array.isArray(saved.customPerspectives) ? saved.customPerspectives : [];
         state.customPerspectives.forEach((agent) => state.enabled.add(agent.id));
+        state.tokenRouter = {
+          ...state.tokenRouter,
+          ...(saved.tokenRouter || {}),
+          policies: saved.tokenRouter?.policies || {}
+        };
       } catch (error) {
         console.warn("Unable to load settings", error);
       }
@@ -1147,7 +1236,8 @@
       localStorage.setItem(storageKey, JSON.stringify({
         developerMode: state.developerMode,
         skillSources: state.skillSources,
-        customPerspectives: state.customPerspectives
+        customPerspectives: state.customPerspectives,
+        tokenRouter: state.tokenRouter
       }, null, 2));
       statusPill.textContent = "Settings saved";
     }
@@ -1173,6 +1263,7 @@
 
     function renderSkillSettings() {
       developerModeInput.checked = state.developerMode;
+      renderTokenRouter();
       skillSettings.innerHTML = "";
       state.skillSources.forEach((source) => {
         const card = document.createElement("article");
@@ -1222,6 +1313,51 @@
       renderSkillSummary();
     }
 
+    function renderTokenRouter() {
+      tokenBudgetInput.value = state.tokenRouter.budget;
+      tokenDefaultRoute.value = state.tokenRouter.defaultRoute;
+      tokenFallbackProvider.value = state.tokenRouter.fallbackProvider;
+      tokenReserveInput.value = state.tokenRouter.reservePercent;
+      tokenPolicyList.innerHTML = "";
+      allPerspectives().forEach((agent) => {
+        const policy = state.tokenRouter.policies[agent.id] || state.tokenRouter.defaultRoute;
+        const row = document.createElement("div");
+        row.className = "token-policy";
+        row.innerHTML = `
+          <div>
+            <strong>${escapeHtml(agent.name)}</strong>
+            <p class="setting-note">${estimateTokensPerAgent()} tokens / ${escapeHtml(agent.tool || "tool")}</p>
+          </div>
+          <select aria-label="Token route for ${escapeHtml(agent.name)}">
+            <option value="inherit" ${policy === "inherit" ? "selected" : ""}>Inherit</option>
+            <option value="economy" ${policy === "economy" ? "selected" : ""}>Economy</option>
+            <option value="balanced" ${policy === "balanced" ? "selected" : ""}>Balanced</option>
+            <option value="deep-reasoning" ${policy === "deep-reasoning" ? "selected" : ""}>Deep</option>
+            <option value="research-heavy" ${policy === "research-heavy" ? "selected" : ""}>Research</option>
+          </select>
+        `;
+        row.querySelector("select").addEventListener("change", (event) => {
+          if (event.target.value === "inherit") {
+            delete state.tokenRouter.policies[agent.id];
+          } else {
+            state.tokenRouter.policies[agent.id] = event.target.value;
+          }
+          renderRuntimeGrid();
+        });
+        tokenPolicyList.append(row);
+      });
+    }
+
+    function estimateTokensPerAgent() {
+      const activeCount = Math.max(1, state.enabled.size);
+      const reserve = Math.min(80, Math.max(0, Number(state.tokenRouter.reservePercent))) / 100;
+      return Math.floor((Number(state.tokenRouter.budget) * (1 - reserve)) / activeCount);
+    }
+
+    function routeForAgent(agent) {
+      return state.tokenRouter.policies[agent.id] || state.tokenRouter.defaultRoute;
+    }
+
     function renderSkillSummary() {
       const enabledCount = state.skillSources.filter((source) => source.enabled).length;
       document.documentElement.dataset.developerMode = state.developerMode ? "on" : "off";
@@ -1233,6 +1369,7 @@
       const payload = {
         developerMode: state.developerMode,
         skillSources: state.skillSources,
+        tokenRouter: state.tokenRouter,
         exportedAt: new Date().toISOString()
       };
       navigator.clipboard?.writeText(JSON.stringify(payload, null, 2));
@@ -1244,6 +1381,13 @@
       state.skillSources = structuredClone(defaultSkillSources);
       state.customPerspectives = [];
       state.enabled = new Set(["business", "ethical", "technical"]);
+      state.tokenRouter = {
+        budget: 24000,
+        defaultRoute: "balanced",
+        fallbackProvider: "kimi",
+        reservePercent: 20,
+        policies: {}
+      };
       saveSettings();
       renderSkillSettings();
       renderAgents();
@@ -1254,6 +1398,7 @@
         ["Daytona", "runtime"],
         ["BrightData", "research"],
         ["Playwright", "browser"],
+        ["Token Router", `${estimateTokensPerAgent()} / agent`],
         ["VideoDB/Kimi", "media + model"]
       ];
       runtimeGrid.innerHTML = "";
@@ -1295,7 +1440,7 @@
           </div>
           <div class="window-footer">
             <span data-window-state>Idle</span>
-            <span>${escapeHtml(agent.tool)}</span>
+            <span>${escapeHtml(routeForAgent(agent))} / ${estimateTokensPerAgent()} tok</span>
           </div>
         `;
         agentWindows.append(node);
@@ -1386,6 +1531,7 @@
         agentList.append(row);
       });
       renderAgentWindows();
+      renderTokenRouter();
       syncMetrics();
     }
 
@@ -1424,6 +1570,7 @@
 
       state.customPerspectives.push(agent);
       state.enabled.add(id);
+      state.tokenRouter.policies[id] = state.tokenRouter.defaultRoute;
       agentCountInput.value = state.enabled.size;
       perspectiveForm.reset();
       saveSettings();
@@ -1511,6 +1658,8 @@
         for (const agent of agents) {
           await new Promise((resolve) => setTimeout(resolve, 120));
           const researchQuery = agent.research.replace("{topic}", topic);
+          const tokenRoute = routeForAgent(agent);
+          updateAgentWindow(agent, "Routing", `Token route ${tokenRoute}: ${estimateTokensPerAgent()} tokens allocated, fallback ${state.tokenRouter.fallbackProvider}.`);
           addResearchItem(agent, researchQuery, round === 1 ? "searching" : "checking");
           updateAgentWindow(agent, "Researching", `Opening ${agent.tool} task: ${researchQuery}`);
           await new Promise((resolve) => setTimeout(resolve, 120));
@@ -1554,6 +1703,26 @@
     runBtn.addEventListener("click", runSimulation);
     resetBtn.addEventListener("click", resetSimulation);
     perspectiveForm.addEventListener("submit", addCustomPerspective);
+    tokenBudgetInput.addEventListener("input", (event) => {
+      state.tokenRouter.budget = Number(event.target.value);
+      renderRuntimeGrid();
+      renderAgentWindows();
+    });
+    tokenDefaultRoute.addEventListener("change", (event) => {
+      state.tokenRouter.defaultRoute = event.target.value;
+      renderTokenRouter();
+      renderRuntimeGrid();
+      renderAgentWindows();
+    });
+    tokenFallbackProvider.addEventListener("change", (event) => {
+      state.tokenRouter.fallbackProvider = event.target.value;
+    });
+    tokenReserveInput.addEventListener("input", (event) => {
+      state.tokenRouter.reservePercent = Number(event.target.value);
+      renderTokenRouter();
+      renderRuntimeGrid();
+      renderAgentWindows();
+    });
     settingsBtn.addEventListener("click", openSettings);
     closeSettingsBtn.addEventListener("click", closeSettings);
     settingsBackdrop.addEventListener("click", (event) => {

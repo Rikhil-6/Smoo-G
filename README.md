@@ -15,6 +15,7 @@ Current capabilities:
 - Generate a transcript plus synthesis, alignment score, and risk score.
 - Configure developer-mode skill sources for BrightData, VideoDB, Daytona, and Kimi.
 - Watch agents in separate supervision windows with research/action traces.
+- Route token budgets by agent, task type, and fallback provider.
 
 ## GitHub Workflow
 

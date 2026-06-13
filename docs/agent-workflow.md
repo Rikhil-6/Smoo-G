@@ -43,6 +43,7 @@ Backend teammates should work in `backend/`:
 - BrightData and Playwright adapters.
 - VideoDB scenario ingestion.
 - Kimi model-provider adapter.
+- Token router policy and budget accounting.
 - API and event streaming for live runs.
 
 ## Orchestration Pattern
@@ -74,6 +75,26 @@ The UI should make each agent observable as its own work window:
 - Human gate: approval before expensive, credentialed, or externally mutating actions.
 
 The static prototype renders this as a simulated ops room. A production adapter should route each agent action through a backend service so credentials, proxy settings, API keys, and scraping sessions never live in browser code.
+
+## Token Router
+
+The token router decides how much model/tool budget each agent receives before the run starts.
+
+Initial routing dimensions:
+
+- Run budget: total token ceiling for one simulation.
+- Review reserve: budget held back for synthesis, citation checks, and human follow-ups.
+- Default route: economy, balanced, deep reasoning, or research heavy.
+- Per-agent route: override route by perspective.
+- Fallback provider: where the run goes when the preferred route is unavailable.
+
+Production routing should also consider:
+
+- Provider price and rate limit.
+- Agent importance and risk tier.
+- Tool cost for BrightData, Playwright, VideoDB, and Daytona runtime time.
+- Cached evidence reuse.
+- User or team spend caps.
 
 ## Integrations Backlog
 
