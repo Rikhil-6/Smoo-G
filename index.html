@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smoo-G Agent Simulator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d2433;
+      --muted: #657085;
+      --line: #d8dee8;
+      --panel: #ffffff;
+      --surface: #f4f7fb;
+      --accent: #206f6b;
+      --accent-2: #7a4e12;
+      --warn: #9a3412;
+      --shadow: 0 18px 50px rgba(30, 39, 57, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(32, 111, 107, 0.09), transparent 34%),
+        linear-gradient(315deg, rgba(122, 78, 18, 0.08), transparent 30%),
+        var(--surface);
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      color: white;
+      background: var(--accent);
+      font-weight: 800;
+      letter-spacing: 0;
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2vw, 2rem);
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 8px;
+      color: white;
+      background: var(--ink);
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(29, 36, 51, 0.14);
+    }
+
+    .btn.secondary {
+      color: var(--ink);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .btn.accent {
+      background: var(--accent);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel,
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 16px;
+    }
+
+    .section {
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 104px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(32, 111, 107, 0.14);
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .counter {
+      min-width: 32px;
+      color: var(--ink);
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .agent-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .agent-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .agent-name {
+      font-weight: 800;
+    }
+
+    .agent-role {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transition: 0.18s ease;
+    }
+
+    .slider::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      top: 3px;
+      left: 3px;
+      border-radius: 50%;
+      background: white;
+      transition: 0.18s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+    }
+
+    .switch input:checked + .slider {
+      background: var(--accent);
+    }
+
+    .switch input:checked + .slider::after {
+      transform: translateX(20px);
+    }
+
+    .workspace {
+      display: grid;
+      gap: 18px;
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .stage {
+      min-height: 560px;
+      padding: 16px;
+    }
+
+    .stage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stage-head h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: white;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .transcript {
+      display: grid;
+      gap: 12px;
+    }
+
+    .message {
+      padding: 14px;
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 10px 24px rgba(29, 36, 51, 0.07);
+    }
+
+    .message:nth-child(3n) {
+      border-left-color: var(--accent-2);
+    }
+
+    .message:nth-child(3n + 1) {
+      border-left-color: #335c9f;
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .message p {
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .synthesis {
+      padding: 16px;
+    }
+
+    .synthesis h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .synthesis-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .takeaway {
+      min-height: 118px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .takeaway strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.86rem;
+    }
+
+    .takeaway span {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .empty {
+      display: grid;
+      place-items: center;
+      min-height: 420px;
+      border: 1px dashed #aab4c3;
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.52);
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .scoreboard,
+      .synthesis-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 620px) {
+      .shell {
+        width: min(100% - 20px, 1440px);
+        padding: 14px 0;
+      }
+
+      .topbar,
+      .stage-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .toolbar {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      .btn {
+        flex: 1;
+      }
+
+      .scoreboard,
+      .synthesis-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">SG</div>
+        <div>
+          <h1>Smoo-G Agent Simulator</h1>
+          <p class="subtitle">Run a compact multi-perspective debate and synthesize the tradeoffs.</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="btn secondary" id="resetBtn" type="button">Reset</button>
+        <button class="btn accent" id="runBtn" type="button">Run Simulation</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel">
+        <section class="section">
+          <h2>Scenario</h2>
+          <label>
+            Topic
+            <textarea id="topicInput">Should a startup use autonomous agents to screen customer-support videos and recommend refunds?</textarea>
+          </label>
+          <label>
+            Simulation Mode
+            <select id="modeSelect">
+              <option value="boardroom">Boardroom decision</option>
+              <option value="product">Product review</option>
+              <option value="risk">Risk review</option>
+              <option value="strategy">Strategy sprint</option>
+            </select>
+          </label>
+          <label>
+            Rounds
+            <div class="range-row">
+              <input id="roundsInput" type="range" min="1" max="5" value="3">
+              <span class="counter" id="roundsValue">3</span>
+            </div>
+          </label>
+          <label>
+            Agents
+            <div class="range-row">
+              <input id="agentCountInput" type="range" min="2" max="6" value="3">
+              <span class="counter" id="agentCountValue">3</span>
+            </div>
+          </label>
+        </section>
+
+        <section class="section">
+          <h2>Perspectives</h2>
+          <div class="agent-list" id="agentList"></div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <div class="scoreboard">
+          <div class="metric">
+            <span>Active Agents</span>
+            <strong id="activeMetric">3</strong>
+          </div>
+          <div class="metric">
+            <span>Debate Turns</span>
+            <strong id="turnMetric">0</strong>
+          </div>
+          <div class="metric">
+            <span>Alignment</span>
+            <strong id="alignmentMetric">-</strong>
+          </div>
+          <div class="metric">
+            <span>Risk</span>
+            <strong id="riskMetric">-</strong>
+          </div>
+        </div>
+
+        <section class="panel stage">
+          <div class="stage-head">
+            <h2>Simulation Transcript</h2>
+            <span class="status-pill" id="statusPill">Ready</span>
+          </div>
+          <div class="empty" id="emptyState">
+            <div>
+              <strong>Choose a topic and run the room.</strong>
+              <p>The simulator will rotate through each enabled perspective, then produce a compact synthesis.</p>
+            </div>
+          </div>
+          <div class="transcript" id="transcript"></div>
+        </section>
+
+        <section class="panel synthesis">
+          <h2>Synthesis</h2>
+          <div class="synthesis-grid" id="synthesisGrid"></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const perspectives = [
+      {
+        id: "business",
+        name: "Business",
+        role: "Revenue, moat, unit economics",
+        stance: "looks for commercial leverage, operational efficiency, pricing power, and survivable execution",
+        prompts: [
+          "Frame the upside as a measurable operating advantage.",
+          "Pressure-test whether the topic improves margins, velocity, retention, or defensibility.",
+          "Ask what would make the investment obviously worth doing."
+        ]
+      },
+      {
+        id: "ethical",
+        name: "Ethical",
+        role: "Rights, consent, harm reduction",
+        stance: "watches for consent gaps, power imbalance, hidden externalities, and dignity-preserving design",
+        prompts: [
+          "Name the people most exposed to downside risk.",
+          "Identify the consent, transparency, and accountability requirements.",
+          "Define the line the team should refuse to cross."
+        ]
+      },
+      {
+        id: "technical",
+        name: "Technical",
+        role: "Architecture, reliability, data quality",
+        stance: "checks feasibility, latency, model quality, observability, integrations, and failure recovery",
+        prompts: [
+          "Describe the minimum viable architecture.",
+          "Surface the failure modes that would be expensive or embarrassing.",
+          "Recommend the next technical proof point."
+        ]
+      },
+      {
+        id: "customer",
+        name: "Customer",
+        role: "Trust, usability, lived workflow",
+        stance: "prioritizes clarity, user agency, support burden, and whether the experience feels fair",
+        prompts: [
+          "Describe the moment a user feels helped or betrayed.",
+          "Find the simplest interaction that builds trust.",
+          "Ask what users need to appeal, correct, or understand."
+        ]
+      },
+      {
+        id: "legal",
+        name: "Legal",
+        role: "Compliance, contracts, liability",
+        stance: "maps regulatory exposure, auditability, vendor terms, retention policies, and jurisdiction risk",
+        prompts: [
+          "Flag the regulatory or contractual tripwires.",
+          "Define the audit trail needed before launch.",
+          "Recommend one governance mechanism."
+        ]
+      },
+      {
+        id: "creative",
+        name: "Creative",
+        role: "Narrative, differentiation, delight",
+        stance: "looks for memorable positioning, product feel, human context, and unexpected options",
+        prompts: [
+          "Reframe the topic into a sharper product promise.",
+          "Suggest a more humane or distinctive interaction pattern.",
+          "Offer one surprising alternative path."
+        ]
+      }
+    ];
+
+    const state = {
+      enabled: new Set(["business", "ethical", "technical"]),
+      running: false
+    };
+
+    const agentList = document.querySelector("#agentList");
+    const agentCountInput = document.querySelector("#agentCountInput");
+    const agentCountValue = document.querySelector("#agentCountValue");
+    const roundsInput = document.querySelector("#roundsInput");
+    const roundsValue = document.querySelector("#roundsValue");
+    const runBtn = document.querySelector("#runBtn");
+    const resetBtn = document.querySelector("#resetBtn");
+    const topicInput = document.querySelector("#topicInput");
+    const modeSelect = document.querySelector("#modeSelect");
+    const transcript = document.querySelector("#transcript");
+    const emptyState = document.querySelector("#emptyState");
+    const synthesisGrid = document.querySelector("#synthesisGrid");
+    const activeMetric = document.querySelector("#activeMetric");
+    const turnMetric = document.querySelector("#turnMetric");
+    const alignmentMetric = document.querySelector("#alignmentMetric");
+    const riskMetric = document.querySelector("#riskMetric");
+    const statusPill = document.querySelector("#statusPill");
+
+    function renderAgents() {
+      const targetCount = Number(agentCountInput.value);
+      while (state.enabled.size < targetCount) {
+        const next = perspectives.find((agent) => !state.enabled.has(agent.id));
+        if (!next) break;
+        state.enabled.add(next.id);
+      }
+      while (state.enabled.size > targetCount) {
+        const lastEnabled = [...state.enabled].at(-1);
+        state.enabled.delete(lastEnabled);
+      }
+
+      agentList.innerHTML = "";
+      perspectives.forEach((agent) => {
+        const row = document.createElement("div");
+        row.className = "agent-row";
+        row.innerHTML = `
+          <div>
+            <div class="agent-name">${agent.name}</div>
+            <div class="agent-role">${agent.role}</div>
+          </div>
+          <label class="switch" title="Toggle ${agent.name}">
+            <input type="checkbox" ${state.enabled.has(agent.id) ? "checked" : ""} aria-label="Toggle ${agent.name}">
+            <span class="slider"></span>
+          </label>
+        `;
+        row.querySelector("input").addEventListener("change", (event) => {
+          if (event.target.checked) {
+            state.enabled.add(agent.id);
+          } else if (state.enabled.size > 2) {
+            state.enabled.delete(agent.id);
+          } else {
+            event.target.checked = true;
+          }
+          agentCountInput.value = state.enabled.size;
+          syncMetrics();
+        });
+        agentList.append(row);
+      });
+      syncMetrics();
+    }
+
+    function syncMetrics() {
+      agentCountValue.textContent = state.enabled.size;
+      roundsValue.textContent = roundsInput.value;
+      activeMetric.textContent = state.enabled.size;
+    }
+
+    function scoreTopic(topic) {
+      const lower = topic.toLowerCase();
+      const riskWords = ["autonomous", "privacy", "refund", "health", "finance", "children", "surveillance", "biometric", "video"];
+      const upsideWords = ["startup", "recommend", "automate", "customer", "growth", "support", "faster", "scale"];
+      const risk = riskWords.reduce((sum, word) => sum + (lower.includes(word) ? 1 : 0), 0);
+      const upside = upsideWords.reduce((sum, word) => sum + (lower.includes(word) ? 1 : 0), 0);
+      return {
+        risk: Math.min(99, 28 + risk * 11),
+        alignment: Math.max(35, Math.min(92, 62 + upside * 5 - risk * 3))
+      };
+    }
+
+    function composeTurn(agent, topic, round, mode) {
+      const prompt = agent.prompts[(round - 1) % agent.prompts.length];
+      const modeLens = {
+        boardroom: "decision readiness",
+        product: "user experience",
+        risk: "controls and reversibility",
+        strategy: "sequencing and advantage"
+      }[mode];
+
+      return `${prompt} On "${topic}", this perspective ${agent.stance}. For round ${round}, the useful move is to test ${modeLens}, state one concrete bet, and name the evidence needed before the next commitment.`;
+    }
+
+    function addMessage(agent, round, text) {
+      const node = document.createElement("article");
+      node.className = "message";
+      node.innerHTML = `
+        <div class="message-meta">
+          <span>${agent.name} Agent</span>
+          <span>Round ${round}</span>
+        </div>
+        <p>${text}</p>
+      `;
+      transcript.append(node);
+    }
+
+    function synthesize(topic, enabledAgents, scores) {
+      const primary = enabledAgents[0]?.name || "Lead";
+      const challenger = enabledAgents[1]?.name || "Challenge";
+      const builder = enabledAgents[2]?.name || "Build";
+      return [
+        {
+          title: "Decision Shape",
+          body: `${primary} makes the strongest case for a narrow pilot, while ${challenger} keeps the launch gated by transparent review and appeal paths.`
+        },
+        {
+          title: "Operating Rule",
+          body: `Treat "${topic}" as a reversible workflow first: log inputs, keep human override, and measure impact before expanding autonomy.`
+        },
+        {
+          title: "Next Experiment",
+          body: `${builder} should define the smallest test that proves value without expanding the highest-risk surface area. Alignment sits near ${scores.alignment}%.`
+        }
+      ];
+    }
+
+    async function runSimulation() {
+      if (state.running) return;
+      state.running = true;
+      runBtn.disabled = true;
+      transcript.innerHTML = "";
+      synthesisGrid.innerHTML = "";
+      emptyState.style.display = "none";
+      statusPill.textContent = "Running";
+      turnMetric.textContent = "0";
+      alignmentMetric.textContent = "-";
+      riskMetric.textContent = "-";
+
+      const topic = topicInput.value.trim() || "An undecided product strategy";
+      const mode = modeSelect.value;
+      const rounds = Number(roundsInput.value);
+      const agents = perspectives.filter((agent) => state.enabled.has(agent.id));
+      let turns = 0;
+
+      for (let round = 1; round <= rounds; round += 1) {
+        for (const agent of agents) {
+          await new Promise((resolve) => setTimeout(resolve, 120));
+          addMessage(agent, round, composeTurn(agent, topic, round, mode));
+          turns += 1;
+          turnMetric.textContent = turns;
+        }
+      }
+
+      const scores = scoreTopic(topic);
+      alignmentMetric.textContent = `${scores.alignment}%`;
+      riskMetric.textContent = `${scores.risk}%`;
+      synthesize(topic, agents, scores).forEach((item) => {
+        const node = document.createElement("div");
+        node.className = "takeaway";
+        node.innerHTML = `<strong>${item.title}</strong><span>${item.body}</span>`;
+        synthesisGrid.append(node);
+      });
+
+      statusPill.textContent = "Complete";
+      runBtn.disabled = false;
+      state.running = false;
+    }
+
+    function resetSimulation() {
+      transcript.innerHTML = "";
+      synthesisGrid.innerHTML = "";
+      emptyState.style.display = "grid";
+      statusPill.textContent = "Ready";
+      turnMetric.textContent = "0";
+      alignmentMetric.textContent = "-";
+      riskMetric.textContent = "-";
+    }
+
+    agentCountInput.addEventListener("input", renderAgents);
+    roundsInput.addEventListener("input", syncMetrics);
+    runBtn.addEventListener("click", runSimulation);
+    resetBtn.addEventListener("click", resetSimulation);
+
+    renderAgents();
+  </script>
+</body>
+</html>
