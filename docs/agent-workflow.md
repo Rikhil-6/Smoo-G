@@ -46,6 +46,8 @@ Backend teammates should work in `backend/`:
 - Token router policy and budget accounting.
 - API and event streaming for live runs.
 
+New AI agents should start with `docs/agents/README.md`, then read `overview.md`, `folder-map.md`, and `work-queue.md`.
+
 ## Orchestration Pattern
 
 Use a small loop for each feature branch or worktree:

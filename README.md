@@ -50,4 +50,5 @@ For regular worktree orchestration, keep each larger capability on its own `code
 frontend/   Static simulator UI and supervision room.
 backend/    Adapter scaffold for Daytona, BrightData, Playwright, VideoDB, and Kimi.
 docs/       Workflow and architecture notes.
+docs/agents Mini handoff pack for new AI agents.
 ```
