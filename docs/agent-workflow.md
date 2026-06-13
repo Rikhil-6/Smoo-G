@@ -47,6 +47,8 @@ Example branches:
 
 ## Integrations Backlog
 
+The simulator includes a developer settings panel for local configuration. Use the gear button to toggle developer mode, enable or disable skill sources, edit source URLs, and export the current JSON settings.
+
 Kimi:
 
 - Use as a model provider for real agent turns.

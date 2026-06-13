@@ -12,6 +12,7 @@ Current capabilities:
 - Toggle perspectives such as business, ethical, technical, customer, legal, and creative.
 - Run 1-5 debate rounds against a custom topic.
 - Generate a transcript plus synthesis, alignment score, and risk score.
+- Configure developer-mode skill sources for BrightData, VideoDB, Daytona, and Kimi.
 
 ## GitHub Workflow
 

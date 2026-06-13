@@ -124,6 +124,13 @@
       background: var(--accent);
     }
 
+    .icon-btn {
+      width: 40px;
+      min-width: 40px;
+      padding: 0;
+      font-size: 1.08rem;
+    }
+
     .layout {
       display: grid;
       grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
@@ -426,6 +433,105 @@
       background: rgba(255, 255, 255, 0.52);
     }
 
+    .settings-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: stretch;
+      justify-content: flex-end;
+      background: rgba(15, 23, 42, 0.34);
+    }
+
+    .settings-backdrop.open {
+      display: flex;
+    }
+
+    .settings-panel {
+      width: min(540px, 100%);
+      height: 100%;
+      overflow: auto;
+      padding: 18px;
+      border-left: 1px solid var(--line);
+      background: #f8fafc;
+      box-shadow: -24px 0 70px rgba(15, 23, 42, 0.24);
+    }
+
+    .settings-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .settings-head h2 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .settings-head p,
+    .setting-note {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .settings-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .skill-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .skill-card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .skill-card h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .skill-card p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      line-height: 1.42;
+    }
+
+    .skill-card a {
+      color: var(--accent);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .developer-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      margin-bottom: 12px;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
     @media (max-width: 980px) {
       .layout {
         grid-template-columns: 1fr;
@@ -476,6 +582,7 @@
         </div>
       </div>
       <div class="toolbar">
+        <button class="btn secondary icon-btn" id="settingsBtn" type="button" title="Developer settings" aria-label="Developer settings">&#9881;</button>
         <button class="btn secondary" id="resetBtn" type="button">Reset</button>
         <button class="btn accent" id="runBtn" type="button">Run Simulation</button>
       </div>
@@ -562,6 +669,37 @@
     </div>
   </main>
 
+  <aside class="settings-backdrop" id="settingsBackdrop" aria-hidden="true">
+    <div class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="settings-head">
+        <div>
+          <h2 id="settingsTitle">Developer Settings</h2>
+          <p>Configure skill sources for future adapters while keeping secrets out of the browser.</p>
+        </div>
+        <button class="btn secondary icon-btn" id="closeSettingsBtn" type="button" title="Close settings" aria-label="Close settings">&times;</button>
+      </div>
+
+      <div class="developer-row">
+        <div>
+          <strong>Developer Mode</strong>
+          <p class="setting-note">Shows integration controls and saves local source preferences.</p>
+        </div>
+        <label class="switch" title="Toggle developer mode">
+          <input id="developerModeInput" type="checkbox" aria-label="Toggle developer mode">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-grid" id="skillSettings"></div>
+
+      <div class="settings-actions">
+        <button class="btn accent" id="saveSettingsBtn" type="button">Save Settings</button>
+        <button class="btn secondary" id="exportSettingsBtn" type="button">Export JSON</button>
+        <button class="btn secondary" id="resetSettingsBtn" type="button">Restore Defaults</button>
+      </div>
+    </div>
+  </aside>
+
   <script>
     const perspectives = [
       {
@@ -632,11 +770,49 @@
       }
     ];
 
+    const defaultSkillSources = [
+      {
+        id: "brightdata",
+        name: "BrightData Skills",
+        url: "https://github.com/brightdata/skills",
+        status: "research",
+        purpose: "Research and data gathering agents for external market or web context.",
+        enabled: true
+      },
+      {
+        id: "videodb",
+        name: "VideoDB",
+        url: "https://github.com/video-db",
+        status: "scenario-source",
+        purpose: "Video transcript and metadata inputs for simulation topics.",
+        enabled: true
+      },
+      {
+        id: "daytona",
+        name: "Daytona Skills",
+        url: "https://github.com/daytona/skills",
+        status: "runtime",
+        purpose: "Isolated development environments and repeatable agent workspaces.",
+        enabled: true
+      },
+      {
+        id: "kimi",
+        name: "Kimi",
+        url: "",
+        status: "model-provider",
+        purpose: "Live model-backed mini-agent responses once provider wiring is added.",
+        enabled: false
+      }
+    ];
+
     const state = {
       enabled: new Set(["business", "ethical", "technical"]),
-      running: false
+      running: false,
+      developerMode: false,
+      skillSources: structuredClone(defaultSkillSources)
     };
 
+    const storageKey = "smoo-g-settings";
     const agentList = document.querySelector("#agentList");
     const agentCountInput = document.querySelector("#agentCountInput");
     const agentCountValue = document.querySelector("#agentCountValue");
@@ -654,6 +830,129 @@
     const alignmentMetric = document.querySelector("#alignmentMetric");
     const riskMetric = document.querySelector("#riskMetric");
     const statusPill = document.querySelector("#statusPill");
+    const settingsBtn = document.querySelector("#settingsBtn");
+    const settingsBackdrop = document.querySelector("#settingsBackdrop");
+    const closeSettingsBtn = document.querySelector("#closeSettingsBtn");
+    const developerModeInput = document.querySelector("#developerModeInput");
+    const skillSettings = document.querySelector("#skillSettings");
+    const saveSettingsBtn = document.querySelector("#saveSettingsBtn");
+    const exportSettingsBtn = document.querySelector("#exportSettingsBtn");
+    const resetSettingsBtn = document.querySelector("#resetSettingsBtn");
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey));
+        if (!saved) return;
+        state.developerMode = Boolean(saved.developerMode);
+        state.skillSources = defaultSkillSources.map((source) => ({
+          ...source,
+          ...(saved.skillSources || []).find((item) => item.id === source.id)
+        }));
+      } catch (error) {
+        console.warn("Unable to load settings", error);
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem(storageKey, JSON.stringify({
+        developerMode: state.developerMode,
+        skillSources: state.skillSources
+      }, null, 2));
+      statusPill.textContent = "Settings saved";
+    }
+
+    function openSettings() {
+      settingsBackdrop.classList.add("open");
+      settingsBackdrop.setAttribute("aria-hidden", "false");
+      renderSkillSettings();
+    }
+
+    function closeSettings() {
+      settingsBackdrop.classList.remove("open");
+      settingsBackdrop.setAttribute("aria-hidden", "true");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function renderSkillSettings() {
+      developerModeInput.checked = state.developerMode;
+      skillSettings.innerHTML = "";
+      state.skillSources.forEach((source) => {
+        const card = document.createElement("article");
+        card.className = "skill-card";
+        const safeUrl = escapeHtml(source.url);
+        card.innerHTML = `
+          <div class="skill-card-head">
+            <div>
+              <h3>${escapeHtml(source.name)}</h3>
+              <p>${escapeHtml(source.purpose)}</p>
+            </div>
+            <label class="switch" title="Toggle ${escapeHtml(source.name)}">
+              <input type="checkbox" ${source.enabled ? "checked" : ""} aria-label="Toggle ${escapeHtml(source.name)}">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <label>
+            Source URL
+            <input value="${safeUrl}" data-field="url" placeholder="https://github.com/org/repo">
+          </label>
+          <label>
+            Adapter Status
+            <select data-field="status">
+              <option value="research" ${source.status === "research" ? "selected" : ""}>Research</option>
+              <option value="scenario-source" ${source.status === "scenario-source" ? "selected" : ""}>Scenario source</option>
+              <option value="runtime" ${source.status === "runtime" ? "selected" : ""}>Runtime</option>
+              <option value="model-provider" ${source.status === "model-provider" ? "selected" : ""}>Model provider</option>
+              <option value="disabled" ${source.status === "disabled" ? "selected" : ""}>Disabled</option>
+            </select>
+          </label>
+          <p><a href="${safeUrl || "#"}" target="_blank" rel="noreferrer">Open source</a></p>
+        `;
+
+        card.querySelector("input[type='checkbox']").addEventListener("change", (event) => {
+          source.enabled = event.target.checked;
+        });
+        card.querySelector("[data-field='url']").addEventListener("input", (event) => {
+          source.url = event.target.value.trim();
+          renderSkillSummary();
+        });
+        card.querySelector("[data-field='status']").addEventListener("change", (event) => {
+          source.status = event.target.value;
+          renderSkillSummary();
+        });
+        skillSettings.append(card);
+      });
+      renderSkillSummary();
+    }
+
+    function renderSkillSummary() {
+      const enabledCount = state.skillSources.filter((source) => source.enabled).length;
+      document.documentElement.dataset.developerMode = state.developerMode ? "on" : "off";
+      settingsBtn.title = `Developer settings: ${enabledCount} sources enabled`;
+    }
+
+    function exportSettings() {
+      const payload = {
+        developerMode: state.developerMode,
+        skillSources: state.skillSources,
+        exportedAt: new Date().toISOString()
+      };
+      navigator.clipboard?.writeText(JSON.stringify(payload, null, 2));
+      statusPill.textContent = "Settings exported";
+    }
+
+    function resetSettings() {
+      state.developerMode = false;
+      state.skillSources = structuredClone(defaultSkillSources);
+      saveSettings();
+      renderSkillSettings();
+    }
 
     function renderAgents() {
       const targetCount = Number(agentCountInput.value);
@@ -816,7 +1115,21 @@
     roundsInput.addEventListener("input", syncMetrics);
     runBtn.addEventListener("click", runSimulation);
     resetBtn.addEventListener("click", resetSimulation);
+    settingsBtn.addEventListener("click", openSettings);
+    closeSettingsBtn.addEventListener("click", closeSettings);
+    settingsBackdrop.addEventListener("click", (event) => {
+      if (event.target === settingsBackdrop) closeSettings();
+    });
+    developerModeInput.addEventListener("change", (event) => {
+      state.developerMode = event.target.checked;
+      renderSkillSummary();
+    });
+    saveSettingsBtn.addEventListener("click", saveSettings);
+    exportSettingsBtn.addEventListener("click", exportSettings);
+    resetSettingsBtn.addEventListener("click", resetSettings);
 
+    loadSettings();
+    renderSkillSettings();
     renderAgents();
   </script>
 </body>
