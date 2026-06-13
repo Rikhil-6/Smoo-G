@@ -6,7 +6,6 @@ import { DebateSlide } from "@/components/slides/DebateSlide";
 import { LandingSlide } from "@/components/slides/LandingSlide";
 import { PostPollSlide } from "@/components/slides/PostPollSlide";
 import { TopicPollSlide } from "@/components/slides/TopicPollSlide";
-import { getDemoDebateMessages } from "@/lib/demo-debate";
 import { buildConclusion } from "@/lib/poll-utils";
 import type {
   DebateMessage,
@@ -32,8 +31,10 @@ export function DebateExperience() {
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appBaseUrl, setAppBaseUrl] = useState("");
 
   const baseUrl =
+    appBaseUrl ||
     process.env.NEXT_PUBLIC_APP_URL ||
     (typeof window !== "undefined" ? window.location.origin : "");
 
@@ -41,6 +42,17 @@ export function DebateExperience() {
     if (!session) return "";
     return `${baseUrl}/vote/${session.id}`;
   }, [baseUrl, session]);
+
+  useEffect(() => {
+    fetch("/api/network-url")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.appUrl) setAppBaseUrl(data.appUrl);
+      })
+      .catch(() => {
+        if (typeof window !== "undefined") setAppBaseUrl(window.location.origin);
+      });
+  }, []);
 
   const refreshSession = useCallback(async (id: string) => {
     const response = await fetch(`/api/sessions/${id}`);
@@ -67,8 +79,7 @@ export function DebateExperience() {
   useEffect(() => {
     if (slide !== 3 || !session?.id) return;
 
-    const demo = getDemoDebateMessages(topic);
-    setMessages(demo);
+    setMessages([]);
 
     fetch(`/api/sessions/${session.id}/debate`, { method: "POST" }).catch(
       console.error,

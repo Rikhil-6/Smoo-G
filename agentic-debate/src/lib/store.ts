@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import type {
+  DebateAgent,
   DebatePhase,
   DebateSession,
   JudgeVerdict,
@@ -15,6 +16,7 @@ export function createSession(topic: string): DebateSession {
     id: uuidv4(),
     topic,
     phase: "pre_poll",
+    agents: [],
     votes: [],
     messages: [],
     verdict: null,
@@ -23,6 +25,17 @@ export function createSession(topic: string): DebateSession {
     updatedAt: now,
   };
   sessions.set(session.id, session);
+  return session;
+}
+
+export function setSessionAgents(
+  sessionId: string,
+  agents: DebateAgent[],
+): DebateSession | undefined {
+  const session = sessions.get(sessionId);
+  if (!session) return undefined;
+  session.agents = agents;
+  session.updatedAt = Date.now();
   return session;
 }
 

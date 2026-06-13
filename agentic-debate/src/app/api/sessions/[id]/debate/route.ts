@@ -40,6 +40,7 @@ export async function GET(
 
   return NextResponse.json({
     debateStatus: session.debateStatus,
+    agents: session.agents,
     messages: session.messages,
     error: session.debateError,
   });

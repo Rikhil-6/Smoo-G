@@ -23,21 +23,34 @@ export async function runInDaytona(
     };
   }
 
-  const response = await fetch(`${apiUrl}/sandbox/run`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ language, script }),
-  });
+  try {
+    const response = await fetch(`${apiUrl}/sandbox/run`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ language, script }),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Daytona error: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        stdout: `[Daytona configured] Sandbox run endpoint returned ${response.status}. Continuing with local summary. ${errorText.slice(0, 180)}`,
+        stderr: errorText,
+        exitCode: response.status,
+      };
+    }
+
+    return (await response.json()) as DaytonaRunResult;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown Daytona error";
+    return {
+      stdout: `[Daytona configured] Could not reach sandbox run endpoint. Continuing with local summary. ${message}`,
+      stderr: message,
+      exitCode: 1,
+    };
   }
-
-  return (await response.json()) as DaytonaRunResult;
 }
 
 /**

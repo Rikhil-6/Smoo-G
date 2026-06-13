@@ -13,10 +13,11 @@ export async function fetchResearch(
   side: "pro" | "con",
 ): Promise<ResearchResult[]> {
   const apiKey = process.env.BRIGHTDATA_API_KEY;
+  const browserWss = process.env.BRIGHTDATA_PLAYWRIGHT_WSS;
   const zone = process.env.BRIGHTDATA_ZONE ?? "serp_api1";
 
   if (!apiKey) {
-    return mockResearch(query, side);
+    return mockResearch(query, side, Boolean(browserWss));
   }
 
   const searchQuery =
@@ -40,14 +41,14 @@ export async function fetchResearch(
 
     if (!response.ok) {
       console.error("Bright Data error:", await response.text());
-      return mockResearch(query, side);
+      return mockResearch(query, side, Boolean(browserWss));
     }
 
     const html = await response.text();
     return parseSearchResults(html).slice(0, 5);
   } catch (error) {
     console.error("Bright Data fetch failed:", error);
-    return mockResearch(query, side);
+    return mockResearch(query, side, Boolean(browserWss));
   }
 }
 
@@ -70,12 +71,19 @@ function parseSearchResults(html: string): ResearchResult[] {
   return results.length > 0 ? results : [];
 }
 
-function mockResearch(query: string, side: "pro" | "con"): ResearchResult[] {
+function mockResearch(
+  query: string,
+  side: "pro" | "con",
+  brightDataBrowserReady = false,
+): ResearchResult[] {
   const stance = side === "pro" ? "in favor of" : "against";
+  const sourceLabel = brightDataBrowserReady
+    ? "BrightData browser endpoint configured; Playwright capture pending"
+    : "Mock research fallback";
   return [
     {
       title: `Recent analysis ${stance} ${query}`,
-      snippet: `A 2025 meta-review highlights key arguments ${stance} the proposition, citing longitudinal studies and expert consensus.`,
+      snippet: `${sourceLabel}. A 2025 meta-review highlights key arguments ${stance} the proposition, citing longitudinal studies and expert consensus.`,
       url: "https://example.com/research-1",
     },
     {

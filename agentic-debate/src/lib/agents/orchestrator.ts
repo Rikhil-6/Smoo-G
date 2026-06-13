@@ -3,36 +3,118 @@ import { fetchResearch } from "../integrations/brightdata";
 import { summarizeResearchInSandbox } from "../integrations/daytona";
 import { chatWithKimi } from "../integrations/kimi";
 import { describeAudienceShift, computePollSnapshot } from "../poll-utils";
+import { buildFallbackAgents, chooseTokenRoute } from "../token-router";
 import {
   appendMessage,
   getSession,
   setDebateStatus,
+  setSessionAgents,
   setVerdict,
   updateSessionPhase,
 } from "../store";
-import type { AgentSide, JudgeScores, JudgeVerdict } from "../types";
+import type { DebateAgent, JudgeScores, JudgeVerdict } from "../types";
 
-const ROUNDS = 3;
+const ROUNDS = 2;
+
+interface ResearchResult {
+  title: string;
+  snippet: string;
+  url: string;
+}
+
+function parseJsonArray(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const match = raw.match(/\[[\s\S]*\]/);
+    return match ? JSON.parse(match[0]) : null;
+  }
+}
+
+async function selectAgents(params: {
+  topic: string;
+  researchSummary: string;
+}): Promise<DebateAgent[]> {
+  const fallback = buildFallbackAgents(params.topic);
+  const prompt = `You are an agent-router choosing the best debate perspectives for a live audience.
+Topic: ${params.topic}
+Grounding research summary:
+${params.researchSummary}
+
+Choose exactly 3 perspectives. They should not simply be pro/con; they should be useful lenses grounded in the topic.
+Use TokenRouter-style route ids from: research-heavy, risk-ethics, operator, technical.
+Respond ONLY with valid JSON array:
+[
+  {"id":"short-kebab-id","name":"Agent Name","perspective":"short lens","stance":"what it argues/checks","route":"route-id","tools":["brightdata","daytona"]}
+]`;
+
+  try {
+    const raw = await chatWithKimi(
+      [
+        {
+          role: "system",
+          content:
+            "Return strict JSON only. Select practical agent perspectives that help humans decide.",
+        },
+        { role: "user", content: prompt },
+      ],
+      { temperature: 0.35, maxTokens: 700 },
+    );
+    const parsed = parseJsonArray(raw);
+    if (!Array.isArray(parsed)) return fallback;
+
+    const agents = parsed.slice(0, 3).map((item, index) => {
+      const candidate = item as Partial<DebateAgent>;
+      const route = chooseTokenRoute(
+        `${candidate.name ?? ""} ${candidate.perspective ?? ""} ${candidate.stance ?? ""} ${params.topic}`,
+      );
+      return {
+        id: candidate.id || `agent-${index + 1}`,
+        name: candidate.name || fallback[index]?.name || `Agent ${index + 1}`,
+        perspective:
+          candidate.perspective ||
+          fallback[index]?.perspective ||
+          "Decision lens",
+        stance:
+          candidate.stance ||
+          fallback[index]?.stance ||
+          "tests the strongest claim and its weakest assumption",
+        route: candidate.route || route.id,
+        model: candidate.model || route.model,
+        tools: Array.isArray(candidate.tools) && candidate.tools.length
+          ? candidate.tools
+          : route.tools,
+      };
+    });
+
+    return agents.length >= 2 ? agents : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 async function generateArgument(params: {
   topic: string;
-  side: AgentSide;
+  agent: DebateAgent;
   role: "opening" | "argument" | "rebuttal" | "closing";
   researchSummary: string;
-  opponentHistory: string;
+  transcriptSoFar: string;
 }): Promise<string> {
-  const sideLabel = params.side === "pro" ? "FOR" : "AGAINST";
-  const systemPrompt = `You are a competitive debate agent arguing ${sideLabel} the proposition: "${params.topic}".
-Use concise, persuasive language (120-180 words). Cite research themes when relevant. No markdown headers.`;
+  const systemPrompt = `You are ${params.agent.name}, a debate agent with this perspective: ${params.agent.perspective}.
+Your stance: ${params.agent.stance}
+TokenRouter route: ${params.agent.route}
+Tools available: ${params.agent.tools.join(", ")}
+Topic: "${params.topic}"
+Use concise, persuasive language (90-140 words). Ground claims in the research context. No markdown headers.`;
 
   const userPrompt = `Role: ${params.role}
 Research context:
 ${params.researchSummary}
 
-Opponent arguments so far:
-${params.opponentHistory || "None yet."}
+Conversation so far:
+${params.transcriptSoFar || "None yet."}
 
-Deliver your ${params.role} statement now.`;
+Deliver your ${params.role} statement now. Challenge at least one assumption from another perspective when useful.`;
 
   return chatWithKimi([
     { role: "system", content: systemPrompt },
@@ -133,6 +215,7 @@ export async function runDebate(sessionId: string): Promise<void> {
       fetchResearch(session.topic, "pro"),
       fetchResearch(session.topic, "con"),
     ]);
+    const allResearch = [...proResearch, ...conResearch];
 
     const proSummary = await summarizeResearchInSandbox(
       proResearch.map((r) => `${r.title}: ${r.snippet}`),
@@ -140,49 +223,74 @@ export async function runDebate(sessionId: string): Promise<void> {
     const conSummary = await summarizeResearchInSandbox(
       conResearch.map((r) => `${r.title}: ${r.snippet}`),
     );
+    const combinedSummary = await summarizeResearchInSandbox(
+      allResearch.map((r) => `${r.title}: ${r.snippet}`),
+    );
+
+    const agents = await selectAgents({
+      topic: session.topic,
+      researchSummary: combinedSummary,
+    });
+    setSessionAgents(sessionId, agents);
+    agents.forEach((agent) => {
+      appendMessage(sessionId, {
+        id: uuidv4(),
+        speaker: agent.id,
+        agentName: agent.name,
+        perspective: agent.perspective,
+        route: agent.route,
+        content: `I selected myself for the ${agent.perspective.toLowerCase()} lens. TokenRouter assigned ${agent.route} on ${agent.model}, with ${agent.tools.join(" + ")} as supporting tools. I will argue by checking: ${agent.stance}.`,
+        sources: allResearch.slice(0, 3).map((r) => r.url),
+        createdAt: Date.now(),
+      });
+    });
 
     const addTurn = async (
-      side: AgentSide,
+      agent: DebateAgent,
       roleKey: "opening" | "argument" | "rebuttal" | "closing",
-      opponentHistory: string,
-      sources: string[],
+      transcriptSoFar: string,
+      sources: ResearchResult[],
     ) => {
       const content = await generateArgument({
         topic: session.topic,
-        side,
+        agent,
         role: roleKey,
-        researchSummary: side === "pro" ? proSummary : conSummary,
-        opponentHistory,
+        researchSummary: agent.route === "risk-ethics" ? conSummary : proSummary,
+        transcriptSoFar,
       });
 
       appendMessage(sessionId, {
         id: uuidv4(),
-        speaker: side,
+        speaker: agent.id,
+        agentName: agent.name,
+        perspective: agent.perspective,
+        route: agent.route,
         content,
-        sources,
+        sources: sources.map((r) => r.url),
         createdAt: Date.now(),
       });
     };
 
-    let proHistory = "";
-    let conHistory = "";
-
-    await addTurn("pro", "opening", conHistory, proResearch.map((r) => r.url));
-    proHistory = getSession(sessionId)?.messages.at(-1)?.content ?? "";
-
-    await addTurn("con", "opening", proHistory, conResearch.map((r) => r.url));
-    conHistory = getSession(sessionId)?.messages.at(-1)?.content ?? "";
+    let transcriptSoFar = "";
 
     for (let round = 0; round < ROUNDS; round++) {
-      await addTurn("pro", "rebuttal", conHistory, proResearch.map((r) => r.url));
-      proHistory += `\n${getSession(sessionId)?.messages.at(-1)?.content ?? ""}`;
-
-      await addTurn("con", "rebuttal", proHistory, conResearch.map((r) => r.url));
-      conHistory += `\n${getSession(sessionId)?.messages.at(-1)?.content ?? ""}`;
+      for (const agent of agents) {
+        await addTurn(
+          agent,
+          round === 0 ? "opening" : "rebuttal",
+          transcriptSoFar,
+          agent.route === "risk-ethics" ? conResearch : allResearch,
+        );
+        const latest = getSession(sessionId)?.messages.at(-1);
+        transcriptSoFar += `\n[${latest?.agentName ?? latest?.speaker}] ${latest?.content ?? ""}`;
+      }
     }
 
-    await addTurn("pro", "closing", conHistory, proResearch.map((r) => r.url));
-    await addTurn("con", "closing", proHistory, conResearch.map((r) => r.url));
+    for (const agent of agents) {
+      await addTurn(agent, "closing", transcriptSoFar, allResearch);
+      const latest = getSession(sessionId)?.messages.at(-1);
+      transcriptSoFar += `\n[${latest?.agentName ?? latest?.speaker}] ${latest?.content ?? ""}`;
+    }
 
     setDebateStatus(sessionId, "done");
     updateSessionPhase(sessionId, "post_poll");

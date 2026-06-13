@@ -32,14 +32,14 @@ export function DebateSlide({ topic, messages, onComplete }: DebateSlideProps) {
     const typingTimer = setTimeout(() => {
       setTyping(false);
       setVisibleCount((count) => count + 1);
-    }, 2000);
+    }, 1800);
 
     return () => clearTimeout(typingTimer);
   }, [visibleCount, messages.length]);
 
   const visibleMessages = messages.slice(0, visibleCount);
   const allShown = visibleCount >= messages.length && messages.length > 0;
-  const nextSpeaker = messages[visibleCount]?.speaker ?? "pro";
+  const nextMessage = messages[visibleCount];
 
   return (
     <SlideShell
@@ -53,7 +53,10 @@ export function DebateSlide({ topic, messages, onComplete }: DebateSlideProps) {
             </PrimaryButton>
           </div>
         ) : (
-          <p className="font-mono-label text-center text-xs uppercase tracking-widest text-[var(--text-muted)]" aria-live="polite">
+          <p
+            className="font-mono-label text-center text-xs uppercase tracking-widest text-[var(--text-muted)]"
+            aria-live="polite"
+          >
             {typing ? COPY.debate.statusTyping : COPY.debate.statusActive}
           </p>
         )
@@ -66,7 +69,9 @@ export function DebateSlide({ topic, messages, onComplete }: DebateSlideProps) {
         <p className="font-display mt-1 text-lg font-bold text-[var(--ice)] sm:text-xl">
           {COPY.debate.header}
         </p>
-        <p className="mt-1 truncate text-sm text-[var(--text-muted)]">&ldquo;{topic}&rdquo;</p>
+        <p className="mt-1 truncate text-sm text-[var(--text-muted)]">
+          &ldquo;{topic}&rdquo;
+        </p>
       </header>
 
       <div className="panel-glass flex min-h-0 flex-1 flex-col overflow-hidden border-white/[0.06]">
@@ -82,7 +87,7 @@ export function DebateSlide({ topic, messages, onComplete }: DebateSlideProps) {
           ))}
 
           {typing && visibleCount < messages.length && (
-            <TypingIndicator side={nextSpeaker} />
+            <TypingIndicator message={nextMessage} />
           )}
         </div>
       </div>
@@ -97,24 +102,40 @@ function ChatBubble({
   message: DebateMessage;
   index: number;
 }) {
-  const isPro = message.speaker === "pro";
+  const isLegacyPro = message.speaker === "pro";
+  const alignRight = index % 2 === 0;
+  const speakerLabel =
+    message.agentName ||
+    (isLegacyPro
+      ? "Agent A"
+      : message.speaker === "con"
+        ? "Agent B"
+        : message.speaker);
+  const lensLabel =
+    message.perspective ||
+    (isLegacyPro
+      ? "For"
+      : message.speaker === "con"
+        ? "Against"
+        : "Perspective");
 
   return (
     <div
-      className={`flex animate-fade-up ${isPro ? "justify-end" : "justify-start"}`}
+      className={`flex animate-fade-up ${alignRight ? "justify-end" : "justify-start"}`}
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       <div
         className={`flex max-w-[88%] flex-col gap-1 sm:max-w-[72%] ${
-          isPro ? "items-end" : "items-start"
+          alignRight ? "items-end" : "items-start"
         }`}
       >
         <span className="font-mono-label px-1 text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
-          {isPro ? "Agent A · For" : "Agent B · Against"}
+          {speakerLabel} · {lensLabel}
+          {message.route ? ` · ${message.route}` : ""}
         </span>
         <div
           className={`px-4 py-3 text-sm leading-relaxed sm:text-base ${
-            isPro
+            alignRight
               ? "rounded-2xl rounded-br-sm bg-[var(--pro-bubble)] text-white shadow-[0_4px_24px_rgba(13,61,50,0.4)]"
               : "rounded-2xl rounded-bl-sm border border-white/10 bg-[var(--con-bubble)] text-[var(--text-primary)]"
           }`}
@@ -126,14 +147,20 @@ function ChatBubble({
   );
 }
 
-function TypingIndicator({ side }: { side: "pro" | "con" }) {
-  const isPro = side === "pro";
+function TypingIndicator({ message }: { message?: DebateMessage }) {
+  const alignRight =
+    !message || message.speaker === "pro" || message.speaker === "market-operator";
 
   return (
-    <div className={`flex ${isPro ? "justify-end" : "justify-start"}`} aria-label="Agent is typing">
+    <div
+      className={`flex ${alignRight ? "justify-end" : "justify-start"}`}
+      aria-label="Agent is typing"
+    >
       <div
         className={`flex gap-1.5 rounded-2xl px-5 py-3.5 ${
-          isPro ? "bg-[var(--pro-bubble)]" : "border border-white/10 bg-[var(--con-bubble)]"
+          alignRight
+            ? "bg-[var(--pro-bubble)]"
+            : "border border-white/10 bg-[var(--con-bubble)]"
         }`}
       >
         <span className="typing-dot h-2 w-2 rounded-full bg-white/60" />

@@ -1,54 +1,41 @@
 # Smoo-G
 
-Smoo-G is a lightweight workspace for simulating small groups of agents that debate a topic from different perspectives.
+Smoo-G’s main surface is now the `agentic-debate/` Next app pulled from the `agentic-debate` branch.
 
-## Agent Simulator
-
-Open `frontend/index.html` in a browser to run the first simulator. The root `index.html` redirects there for convenience.
-
-Current capabilities:
-
-- Start with 2-3 mini agents and scale up to 6.
-- Toggle perspectives such as business, ethical, technical, customer, legal, and creative.
-- Add user-defined perspectives from the UI.
-- Run 1-5 debate rounds against a custom topic.
-- Generate a transcript plus synthesis, alignment score, and risk score.
-- Configure developer-mode skill sources for BrightData, VideoDB, Daytona, and Kimi.
-- Watch agents in separate supervision windows with research/action traces.
-- Route token budgets by agent, task type, and fallback provider.
-
-## GitHub Workflow
-
-Remote:
+## Main App
 
 ```powershell
-git remote -v
+cd agentic-debate
+npm install
+npm run dev
 ```
 
-Current origin is expected to be:
+The dev script binds to `0.0.0.0` so QR voting works from phones on the same network. The app also exposes `/api/network-url` to prefer a LAN URL for QR codes instead of `127.0.0.1`.
 
-```text
-https://github.com/Rikhil-6/Smoo-G.git
-```
+## Current Capabilities
 
-Recommended cadence:
+- Live topic session with pre/post QR voting.
+- Agent roster chosen by Kimi/TokenRouter from the topic plus research summary.
+- BrightData-backed research path with graceful fallback when only the browser WSS is configured.
+- Daytona sandbox summary path with fail-soft behavior if the run endpoint differs.
+- Multi-perspective argument chat with agent names, lenses, routes, and supporting source URLs.
+
+## Local Config
+
+Use `agentic-debate/.env.local` for real credentials. It is ignored by git. Start from:
 
 ```powershell
-git status --short --branch
-git pull --rebase origin main
-git checkout -b codex/agent-simulator
-git add README.md Markdown.md index.html frontend backend docs/agent-workflow.md
-git commit -m "Add static agent simulator"
-git push -u origin codex/agent-simulator
+Copy-Item agentic-debate/.env.example agentic-debate/.env.local
 ```
 
-For regular worktree orchestration, keep each larger capability on its own `codex/*` branch or Codex worktree, then rebase before opening a pull request.
+Key integrations:
 
-## Project Layout
+- `DAYTONA_API_KEY`
+- `BRIGHTDATA_API_KEY` or `BRIGHTDATA_PLAYWRIGHT_WSS`
+- `MOONSHOT_API_KEY` for Kimi
+- `TOKENROUTER_API_KEY` when a hosted router is available
+- `NEXT_PUBLIC_APP_URL` when you want to force a specific QR base URL
 
-```text
-frontend/   Static simulator UI and supervision room.
-backend/    Adapter scaffold for Daytona, BrightData, Playwright, VideoDB, and Kimi.
-docs/       Workflow and architecture notes.
-docs/agents Mini handoff pack for new AI agents.
-```
+## Legacy Prototype
+
+The older static simulator remains in `frontend/` as reference material, but new work should target `agentic-debate/`.

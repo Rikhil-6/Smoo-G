@@ -75,6 +75,35 @@ function mockKimiResponse(messages: KimiMessage[]): string {
     });
   }
 
+  if (content.includes("Choose exactly 3 perspectives")) {
+    return JSON.stringify([
+      {
+        id: "market-operator",
+        name: "Market Operator",
+        perspective: "Business viability",
+        stance: "argues for the path that can survive customers, budget, and timing",
+        route: "operator",
+        tools: ["daytona"],
+      },
+      {
+        id: "trust-guardian",
+        name: "Trust Guardian",
+        perspective: "Ethics and risk",
+        stance: "challenges consent, safety, hidden incentives, and failure modes",
+        route: "risk-ethics",
+        tools: ["brightdata", "daytona"],
+      },
+      {
+        id: "systems-builder",
+        name: "Systems Builder",
+        perspective: "Technical feasibility",
+        stance: "tests whether the workflow can run with reliable data and tool outputs",
+        route: "technical",
+        tools: ["daytona", "brightdata"],
+      },
+    ]);
+  }
+
   if (content.includes("opening")) {
     return content.includes("AGAINST") || content.includes("Con")
       ? "Opening (Con): The burden of proof requires us to weigh systemic risks, unintended consequences, and equity impacts—not just headline benefits."

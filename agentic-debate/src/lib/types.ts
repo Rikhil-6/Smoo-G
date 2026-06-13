@@ -9,6 +9,16 @@ export type Stance = "yes" | "no";
 
 export type AgentSide = "pro" | "con";
 
+export interface DebateAgent {
+  id: string;
+  name: string;
+  perspective: string;
+  stance: string;
+  route: string;
+  model: string;
+  tools: string[];
+}
+
 export interface Vote {
   id: string;
   stance: Stance;
@@ -18,7 +28,10 @@ export interface Vote {
 
 export interface DebateMessage {
   id: string;
-  speaker: AgentSide;
+  speaker: string;
+  agentName?: string;
+  perspective?: string;
+  route?: string;
   content: string;
   sources?: string[];
   createdAt: number;
@@ -54,6 +67,7 @@ export interface DebateSession {
   id: string;
   topic: string;
   phase: DebatePhase;
+  agents: DebateAgent[];
   votes: Vote[];
   messages: DebateMessage[];
   verdict: JudgeVerdict | null;
