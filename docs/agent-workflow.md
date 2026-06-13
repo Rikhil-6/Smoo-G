@@ -45,9 +45,35 @@ Example branches:
 - `codex/videodb-topic-ingest`
 - `codex/daytona-runner`
 
+## Supervision Model
+
+The UI should make each agent observable as its own work window:
+
+- Runtime: where the agent is running, such as a Daytona workspace or browser session.
+- Tool: what it is using, such as BrightData, Playwright, VideoDB, or Kimi.
+- Research trace: search queries, page checks, extracted snippets, and blocked actions.
+- Thought summary: concise reasoning updates that are safe to show to the supervisor.
+- Human gate: approval before expensive, credentialed, or externally mutating actions.
+
+The static prototype renders this as a simulated ops room. A production adapter should route each agent action through a backend service so credentials, proxy settings, API keys, and scraping sessions never live in browser code.
+
 ## Integrations Backlog
 
 The simulator includes a developer settings panel for local configuration. Use the gear button to toggle developer mode, enable or disable skill sources, edit source URLs, and export the current JSON settings.
+
+Daytona:
+
+- Start one isolated workspace per agent or per simulation run.
+- Attach each workspace to a branch or ephemeral task id.
+- Stream logs back to the simulator as window events.
+- Push useful artifacts or patches back through GitHub.
+
+BrightData and Playwright:
+
+- Use Playwright for supervised browsing, screenshots, and DOM inspection.
+- Use BrightData for resilient public web research where proxy-backed access is needed.
+- Store raw pages, snippets, and citations as evidence objects linked to the agent turn.
+- Pause for user confirmation before login, purchase, upload, or other side-effecting actions.
 
 Kimi:
 

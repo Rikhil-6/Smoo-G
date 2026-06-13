@@ -13,6 +13,7 @@ Current capabilities:
 - Run 1-5 debate rounds against a custom topic.
 - Generate a transcript plus synthesis, alignment score, and risk score.
 - Configure developer-mode skill sources for BrightData, VideoDB, Daytona, and Kimi.
+- Watch agents in separate supervision windows with research/action traces.
 
 ## GitHub Workflow
 

@@ -317,6 +317,182 @@
       line-height: 1;
     }
 
+    .agent-windows {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .agent-window {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 250px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 12px 28px rgba(29, 36, 51, 0.08);
+      overflow: hidden;
+    }
+
+    .window-chrome {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .window-title {
+      min-width: 0;
+    }
+
+    .window-title strong {
+      display: block;
+      font-size: 0.92rem;
+    }
+
+    .window-title span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dots {
+      display: flex;
+      gap: 5px;
+      flex: 0 0 auto;
+    }
+
+    .dots i {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .dots i:first-child {
+      background: #b45309;
+    }
+
+    .dots i:nth-child(2) {
+      background: #206f6b;
+    }
+
+    .window-body {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .window-body p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .trace-line {
+      padding: 9px;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: var(--ink);
+      font-size: 0.86rem;
+      line-height: 1.4;
+    }
+
+    .window-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .runtime-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .runtime-chip {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .runtime-chip strong,
+    .runtime-chip span {
+      display: block;
+    }
+
+    .runtime-chip span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .research-panel {
+      padding: 16px;
+    }
+
+    .research-panel h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .research-feed {
+      display: grid;
+      gap: 10px;
+    }
+
+    .research-item {
+      display: grid;
+      grid-template-columns: minmax(110px, 0.22fr) minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .research-agent {
+      font-weight: 800;
+    }
+
+    .research-query {
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .research-tool {
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #edf5f4;
+      color: var(--accent);
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      white-space: nowrap;
+    }
+
     .stage {
       min-height: 560px;
       padding: 16px;
@@ -538,6 +714,8 @@
       }
 
       .scoreboard,
+      .agent-windows,
+      .runtime-grid,
       .synthesis-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -565,7 +743,13 @@
       }
 
       .scoreboard,
+      .agent-windows,
+      .runtime-grid,
       .synthesis-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .research-item {
         grid-template-columns: 1fr;
       }
     }
@@ -647,6 +831,15 @@
           </div>
         </div>
 
+        <div class="runtime-grid" id="runtimeGrid"></div>
+
+        <section class="agent-windows" id="agentWindows"></section>
+
+        <section class="panel research-panel">
+          <h2>Supervised Research</h2>
+          <div class="research-feed" id="researchFeed"></div>
+        </section>
+
         <section class="panel stage">
           <div class="stage-head">
             <h2>Simulation Transcript</h2>
@@ -674,7 +867,7 @@
       <div class="settings-head">
         <div>
           <h2 id="settingsTitle">Developer Settings</h2>
-          <p>Configure skill sources for future adapters while keeping secrets out of the browser.</p>
+          <p>Configure supervised runtime adapters for Daytona workspaces, browser research, scraping, media context, and model-backed turns.</p>
         </div>
         <button class="btn secondary icon-btn" id="closeSettingsBtn" type="button" title="Close settings" aria-label="Close settings">&times;</button>
       </div>
@@ -682,7 +875,7 @@
       <div class="developer-row">
         <div>
           <strong>Developer Mode</strong>
-          <p class="setting-note">Shows integration controls and saves local source preferences.</p>
+          <p class="setting-note">Shows runtime controls, agent windows, and local source preferences.</p>
         </div>
         <label class="switch" title="Toggle developer mode">
           <input id="developerModeInput" type="checkbox" aria-label="Toggle developer mode">
@@ -706,7 +899,10 @@
         id: "business",
         name: "Business",
         role: "Revenue, moat, unit economics",
+        runtime: "Daytona workspace",
+        tool: "BrightData",
         stance: "looks for commercial leverage, operational efficiency, pricing power, and survivable execution",
+        research: "market benchmarks and startup economics for {topic}",
         prompts: [
           "Frame the upside as a measurable operating advantage.",
           "Pressure-test whether the topic improves margins, velocity, retention, or defensibility.",
@@ -717,7 +913,10 @@
         id: "ethical",
         name: "Ethical",
         role: "Rights, consent, harm reduction",
+        runtime: "Kimi review loop",
+        tool: "Playwright",
         stance: "watches for consent gaps, power imbalance, hidden externalities, and dignity-preserving design",
+        research: "policy, consent, and accountability precedents for {topic}",
         prompts: [
           "Name the people most exposed to downside risk.",
           "Identify the consent, transparency, and accountability requirements.",
@@ -728,7 +927,10 @@
         id: "technical",
         name: "Technical",
         role: "Architecture, reliability, data quality",
+        runtime: "Daytona workspace",
+        tool: "Playwright",
         stance: "checks feasibility, latency, model quality, observability, integrations, and failure recovery",
+        research: "reference architectures and failure modes for {topic}",
         prompts: [
           "Describe the minimum viable architecture.",
           "Surface the failure modes that would be expensive or embarrassing.",
@@ -739,7 +941,10 @@
         id: "customer",
         name: "Customer",
         role: "Trust, usability, lived workflow",
+        runtime: "Browser session",
+        tool: "BrightData",
         stance: "prioritizes clarity, user agency, support burden, and whether the experience feels fair",
+        research: "customer complaints, support patterns, and UX expectations for {topic}",
         prompts: [
           "Describe the moment a user feels helped or betrayed.",
           "Find the simplest interaction that builds trust.",
@@ -750,7 +955,10 @@
         id: "legal",
         name: "Legal",
         role: "Compliance, contracts, liability",
+        runtime: "Kimi review loop",
+        tool: "BrightData",
         stance: "maps regulatory exposure, auditability, vendor terms, retention policies, and jurisdiction risk",
+        research: "regulatory guidance and audit obligations for {topic}",
         prompts: [
           "Flag the regulatory or contractual tripwires.",
           "Define the audit trail needed before launch.",
@@ -761,7 +969,10 @@
         id: "creative",
         name: "Creative",
         role: "Narrative, differentiation, delight",
+        runtime: "Browser session",
+        tool: "VideoDB",
         stance: "looks for memorable positioning, product feel, human context, and unexpected options",
+        research: "product demos and public narrative examples for {topic}",
         prompts: [
           "Reframe the topic into a sharper product promise.",
           "Suggest a more humane or distinctive interaction pattern.",
@@ -824,6 +1035,9 @@
     const modeSelect = document.querySelector("#modeSelect");
     const transcript = document.querySelector("#transcript");
     const emptyState = document.querySelector("#emptyState");
+    const agentWindows = document.querySelector("#agentWindows");
+    const runtimeGrid = document.querySelector("#runtimeGrid");
+    const researchFeed = document.querySelector("#researchFeed");
     const synthesisGrid = document.querySelector("#synthesisGrid");
     const activeMetric = document.querySelector("#activeMetric");
     const turnMetric = document.querySelector("#turnMetric");
@@ -935,6 +1149,7 @@
       const enabledCount = state.skillSources.filter((source) => source.enabled).length;
       document.documentElement.dataset.developerMode = state.developerMode ? "on" : "off";
       settingsBtn.title = `Developer settings: ${enabledCount} sources enabled`;
+      renderRuntimeGrid();
     }
 
     function exportSettings() {
@@ -952,6 +1167,88 @@
       state.skillSources = structuredClone(defaultSkillSources);
       saveSettings();
       renderSkillSettings();
+    }
+
+    function renderRuntimeGrid() {
+      const summaries = [
+        ["Daytona", "runtime"],
+        ["BrightData", "research"],
+        ["Playwright", "browser"],
+        ["VideoDB/Kimi", "media + model"]
+      ];
+      runtimeGrid.innerHTML = "";
+      summaries.forEach(([name, category]) => {
+        const match = state.skillSources.find((source) => source.name.toLowerCase().includes(name.toLowerCase().split("/")[0]));
+        const node = document.createElement("div");
+        node.className = "runtime-chip";
+        node.innerHTML = `<strong>${name}</strong><span>${match?.enabled ? match.status : category}</span>`;
+        runtimeGrid.append(node);
+      });
+    }
+
+    function enabledAgents() {
+      return perspectives.filter((agent) => state.enabled.has(agent.id));
+    }
+
+    function renderAgentWindows(topic = topicInput.value.trim()) {
+      const agents = enabledAgents();
+      agentWindows.innerHTML = "";
+      agents.forEach((agent) => {
+        const node = document.createElement("article");
+        node.className = "agent-window";
+        node.dataset.agent = agent.id;
+        node.innerHTML = `
+          <div class="window-chrome">
+            <div class="window-title">
+              <strong>${escapeHtml(agent.name)} Agent</strong>
+              <span>${escapeHtml(agent.runtime)} / ${escapeHtml(agent.tool)}</span>
+            </div>
+            <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+          </div>
+          <div class="window-body" data-window-body>
+            <p>${escapeHtml(agent.role)}</p>
+            <div class="trace-line">Waiting for supervised task assignment.</div>
+          </div>
+          <div class="window-footer">
+            <span data-window-state>Idle</span>
+            <span>${escapeHtml(agent.tool)}</span>
+          </div>
+        `;
+        agentWindows.append(node);
+      });
+      renderResearchPlan(topic || "the selected topic");
+    }
+
+    function renderResearchPlan(topic) {
+      researchFeed.innerHTML = "";
+      enabledAgents().forEach((agent) => {
+        addResearchItem(agent, agent.research.replace("{topic}", topic), "queued");
+      });
+    }
+
+    function addResearchItem(agent, query, status = "observed") {
+      const node = document.createElement("div");
+      node.className = "research-item";
+      node.innerHTML = `
+        <div class="research-agent">${escapeHtml(agent.name)}</div>
+        <div class="research-query">${escapeHtml(query)}</div>
+        <div class="research-tool">${escapeHtml(status)} / ${escapeHtml(agent.tool)}</div>
+      `;
+      researchFeed.prepend(node);
+    }
+
+    function updateAgentWindow(agent, status, detail) {
+      const node = agentWindows.querySelector(`[data-agent="${agent.id}"]`);
+      if (!node) return;
+      node.querySelector("[data-window-state]").textContent = status;
+      const body = node.querySelector("[data-window-body]");
+      const line = document.createElement("div");
+      line.className = "trace-line";
+      line.textContent = detail;
+      body.append(line);
+      while (body.children.length > 5) {
+        body.children[1].remove();
+      }
     }
 
     function renderAgents() {
@@ -991,8 +1288,9 @@
           agentCountInput.value = state.enabled.size;
           syncMetrics();
         });
-        agentList.append(row);
+      agentList.append(row);
       });
+      renderAgentWindows();
       syncMetrics();
     }
 
@@ -1065,6 +1363,7 @@
       runBtn.disabled = true;
       transcript.innerHTML = "";
       synthesisGrid.innerHTML = "";
+      researchFeed.innerHTML = "";
       emptyState.style.display = "none";
       statusPill.textContent = "Running";
       turnMetric.textContent = "0";
@@ -1074,13 +1373,20 @@
       const topic = topicInput.value.trim() || "An undecided product strategy";
       const mode = modeSelect.value;
       const rounds = Number(roundsInput.value);
-      const agents = perspectives.filter((agent) => state.enabled.has(agent.id));
+      const agents = enabledAgents();
+      renderAgentWindows(topic);
       let turns = 0;
 
       for (let round = 1; round <= rounds; round += 1) {
         for (const agent of agents) {
           await new Promise((resolve) => setTimeout(resolve, 120));
-          addMessage(agent, round, composeTurn(agent, topic, round, mode));
+          const researchQuery = agent.research.replace("{topic}", topic);
+          addResearchItem(agent, researchQuery, round === 1 ? "searching" : "checking");
+          updateAgentWindow(agent, "Researching", `Opening ${agent.tool} task: ${researchQuery}`);
+          await new Promise((resolve) => setTimeout(resolve, 120));
+          const turn = composeTurn(agent, topic, round, mode);
+          updateAgentWindow(agent, "Reasoning", turn);
+          addMessage(agent, round, turn);
           turns += 1;
           turnMetric.textContent = turns;
         }
@@ -1097,6 +1403,7 @@
       });
 
       statusPill.textContent = "Complete";
+      agents.forEach((agent) => updateAgentWindow(agent, "Complete", "Ready for human review, citation check, or follow-up task."));
       runBtn.disabled = false;
       state.running = false;
     }
@@ -1104,6 +1411,7 @@
     function resetSimulation() {
       transcript.innerHTML = "";
       synthesisGrid.innerHTML = "";
+      renderAgentWindows();
       emptyState.style.display = "grid";
       statusPill.textContent = "Ready";
       turnMetric.textContent = "0";
