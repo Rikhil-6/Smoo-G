@@ -208,6 +208,85 @@
       flex-wrap: wrap;
     }
 
+    .starter-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 14px;
+      margin-bottom: 18px;
+      padding: 16px;
+      border: 1px solid rgba(47, 72, 88, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .starter-panel h2 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+    }
+
+    .starter-panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .starter-steps {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .starter-step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 9px;
+      align-items: center;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .starter-step strong {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--blueprint);
+      color: var(--steel);
+      font-size: 0.82rem;
+    }
+
+    .sample-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .sample-card {
+      display: grid;
+      align-content: space-between;
+      min-height: 132px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .sample-card strong,
+    .sample-card span {
+      display: block;
+    }
+
+    .sample-card span {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
     .media-hero {
       display: grid;
       grid-template-rows: auto 1fr auto;
@@ -1137,6 +1216,7 @@
       }
 
       .brief,
+      .starter-panel,
       .insight-board {
         grid-template-columns: 1fr;
       }
@@ -1186,6 +1266,7 @@
       .agent-windows,
       .runtime-grid,
       .signal-grid,
+      .sample-grid,
       .template-grid,
       .synthesis-grid {
         grid-template-columns: 1fr;
@@ -1231,6 +1312,33 @@
         </div>
         <p class="subtitle">Video, transcript, scrape, and browser findings become visual evidence blocks before synthesis.</p>
       </aside>
+    </section>
+
+    <section class="starter-panel">
+      <div>
+        <p class="brief-eyebrow">Start here</p>
+        <h2>Run your first personal simulation in under a minute.</h2>
+        <p>Pick a sample, press run, then read the Business Outputs first. The lower transcript is there if you want to inspect how the agents arrived at the result.</p>
+        <div class="starter-steps">
+          <div class="starter-step"><strong>1</strong><span>Choose a personal or business scenario.</span></div>
+          <div class="starter-step"><strong>2</strong><span>Use the plus and minus buttons only if you want more agents or rounds.</span></div>
+          <div class="starter-step"><strong>3</strong><span>Read Decision Signals, Evidence Sources, and Business Outputs before the raw transcript.</span></div>
+        </div>
+      </div>
+      <div class="sample-grid">
+        <button class="sample-card" type="button" data-sample="personal">
+          <strong>Personal Test</strong>
+          <span>Balance learning, client work, and building an agent product.</span>
+        </button>
+        <button class="sample-card" type="button" data-sample="startup">
+          <strong>Startup Test</strong>
+          <span>Evaluate autonomous video refunds for support operations.</span>
+        </button>
+        <button class="sample-card" type="button" data-sample="website">
+          <strong>Website Test</strong>
+          <span>Plan a business-grade site using public proof and video context.</span>
+        </button>
+      </div>
     </section>
 
     <div class="layout">
@@ -1613,6 +1721,7 @@
     const resetBtn = document.querySelector("#resetBtn");
     const briefRunBtn = document.querySelector("#briefRunBtn");
     const briefSettingsBtn = document.querySelector("#briefSettingsBtn");
+    const sampleButtons = document.querySelectorAll("[data-sample]");
     const topicInput = document.querySelector("#topicInput");
     const modeSelect = document.querySelector("#modeSelect");
     const transcript = document.querySelector("#transcript");
@@ -1651,6 +1760,30 @@
     const customPerspectiveResearch = document.querySelector("#customPerspectiveResearch");
     const customPerspectiveRuntime = document.querySelector("#customPerspectiveRuntime");
     const customPerspectiveTool = document.querySelector("#customPerspectiveTool");
+
+    const sampleScenarios = {
+      personal: {
+        topic: "Should I spend the next 90 days building an AI agent product while balancing client work, learning goals, and personal bandwidth?",
+        mode: "strategy",
+        learner: "personal strategy decision with risk, learning, product design, and evidence needs",
+        rounds: 2,
+        agents: 3
+      },
+      startup: {
+        topic: "Should a startup use autonomous agents to screen customer-support videos and recommend refunds?",
+        mode: "boardroom",
+        learner: "business risk review with video evidence, customer trust, and operational impact",
+        rounds: 3,
+        agents: 3
+      },
+      website: {
+        topic: "How should we design a business-grade agent intelligence website using public evidence, VideoDB context, and supervised browser research?",
+        mode: "product",
+        learner: "design a business website with public evidence and video context",
+        rounds: 2,
+        agents: 4
+      }
+    };
 
     function loadSettings() {
       try {
@@ -1870,6 +2003,20 @@
       renderTokenRouter();
       renderRuntimeGrid();
       renderAgentWindows();
+    }
+
+    function applySampleScenario(sampleId) {
+      const sample = sampleScenarios[sampleId];
+      if (!sample) return;
+      topicInput.value = sample.topic;
+      modeSelect.value = sample.mode;
+      roundsInput.value = sample.rounds;
+      agentCountInput.value = sample.agents;
+      learnerRoleInput.value = sample.learner;
+      recommendLearnerRoute();
+      resetSimulation();
+      renderAgents();
+      statusPill.textContent = "Sample loaded";
     }
 
     function renderSkillSummary() {
@@ -2289,6 +2436,7 @@
 
       statusPill.textContent = "Complete";
       agents.forEach((agent) => updateAgentWindow(agent, "Complete", "Ready for human review, citation check, or follow-up task."));
+      briefCopy.textContent = "Simulation complete. Start with Business Outputs, then scan Decision Signals and Evidence Sources. The transcript remains available for inspection.";
       runBtn.disabled = false;
       state.running = false;
     }
@@ -2302,6 +2450,7 @@
       renderOutputGallery();
       emptyState.style.display = "grid";
       statusPill.textContent = "Ready";
+      briefCopy.textContent = "Set the topic, choose the agent perspectives, then watch each agent collect signals, route tokens, and produce an executive synthesis you can inspect.";
       turnMetric.textContent = "0";
       alignmentMetric.textContent = "-";
       riskMetric.textContent = "-";
@@ -2311,6 +2460,9 @@
     roundsUpBtn.addEventListener("click", () => setRounds(Number(roundsInput.value) + 1));
     agentCountDownBtn.addEventListener("click", () => setAgentCount(Number(agentCountInput.value) - 1));
     agentCountUpBtn.addEventListener("click", () => setAgentCount(Number(agentCountInput.value) + 1));
+    sampleButtons.forEach((button) => {
+      button.addEventListener("click", () => applySampleScenario(button.dataset.sample));
+    });
     runBtn.addEventListener("click", runSimulation);
     briefRunBtn.addEventListener("click", runSimulation);
     resetBtn.addEventListener("click", resetSimulation);
