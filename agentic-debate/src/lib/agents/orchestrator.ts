@@ -1,6 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
 import { fetchResearch } from "../integrations/brightdata";
-import { summarizeResearchInSandbox } from "../integrations/daytona";
+import {
+  provisionDaytonaSandboxes,
+  runInDaytona,
+  summarizeResearchInSandbox,
+} from "../integrations/daytona";
 import { chatWithKimi } from "../integrations/kimi";
 import { describeAudienceShift, computePollSnapshot } from "../poll-utils";
 import { buildFallbackAgents, chooseTokenRoute } from "../token-router";
@@ -14,12 +18,241 @@ import {
 } from "../store";
 import type { DebateAgent, JudgeScores, JudgeVerdict } from "../types";
 
-const ROUNDS = 2;
+const ROUNDS = 3;
+const MIN_TURN_INTERVAL_MS = Number(process.env.DEBATE_MIN_TURN_MS ?? 1200);
+const MAX_GENERATION_RETRIES = 4;
+const activeDebates = new Set<string>();
+
+type AgentRole = "opening" | "argument" | "rebuttal" | "closing";
 
 interface ResearchResult {
   title: string;
   snippet: string;
   url: string;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeUrl(url: string): string {
+  return url.trim().replace(/[),.;]+$/g, "").replace(/\/+$/, "");
+}
+
+function firstSentence(text: string): string {
+  const compact = text.replace(/\s+/g, " ").trim();
+  if (!compact) return "";
+  const sentenceMatch = compact.match(/^(.{35,190}?[.!?])(?:\s|$)/);
+  if (sentenceMatch?.[1]) return sentenceMatch[1].trim();
+  return compact.length > 180 ? `${compact.slice(0, 177).trim()}...` : compact;
+}
+
+function formatResearchContext(sources: ResearchResult[]): string {
+  return sources
+    .map((source, index) => {
+      const summary = firstSentence(source.snippet || source.title);
+      return `[${index + 1}] ${source.title}\nSource URL: ${source.url}\nKey finding: ${summary}`;
+    })
+    .join("\n\n");
+}
+
+function pickResearchForAgent(
+  agent: DebateAgent,
+  allSources: ResearchResult[],
+): ResearchResult[] {
+  if (allSources.length === 0) return [];
+  const seed = agent.id
+    .split("")
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const start = seed % allSources.length;
+  const rotated = [...allSources.slice(start), ...allSources.slice(0, start)];
+  return rotated.slice(0, Math.min(4, rotated.length));
+}
+
+function normalizeMessageContent(content: string): string {
+  return content
+    .toLowerCase()
+    .replace(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g, "$1")
+    .replace(/\[\d+\]/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenSet(content: string): Set<string> {
+  return new Set(
+    normalizeMessageContent(content)
+      .split(" ")
+      .filter((token) => token.length > 2),
+  );
+}
+
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const token of a) {
+    if (b.has(token)) intersection += 1;
+  }
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function looksLikeRepeat(candidate: string, history: string[]): boolean {
+  const normalizedCandidate = normalizeMessageContent(candidate);
+  if (!normalizedCandidate) return true;
+
+  const recent = history.slice(-8);
+  if (recent.some((message) => normalizeMessageContent(message) === normalizedCandidate)) {
+    return true;
+  }
+
+  const candidateTokens = tokenSet(candidate);
+  return recent.some((message) => jaccardSimilarity(candidateTokens, tokenSet(message)) >= 0.84);
+}
+
+function hasExactDuplicate(candidate: string, history: string[]): boolean {
+  const normalizedCandidate = normalizeMessageContent(candidate);
+  return history.some(
+    (message) => normalizeMessageContent(message) === normalizedCandidate,
+  );
+}
+
+function sourceAlias(index: number): string {
+  return `[${index + 1}]`;
+}
+
+function sourceSummaryLine(source: ResearchResult, index: number): string {
+  const summary = firstSentence(source.snippet || source.title);
+  return `${sourceAlias(index)} ${summary}`;
+}
+
+function buildEvidenceDigest(sources: ResearchResult[]): string {
+  if (sources.length === 0) return "";
+  const lines = sources.slice(0, 3).map((source, index) => sourceSummaryLine(source, index));
+  return `Evidence snapshot: ${lines.join(" ")}`;
+}
+
+function findSourceIndexByUrl(url: string, sources: ResearchResult[]): number {
+  const normalized = normalizeUrl(url);
+  if (!normalized) return -1;
+
+  const exactMatch = sources.findIndex((source) => normalizeUrl(source.url) === normalized);
+  if (exactMatch >= 0) return exactMatch;
+
+  try {
+    const target = new URL(normalized);
+    return sources.findIndex((source) => {
+      try {
+        const candidate = new URL(source.url);
+        return (
+          candidate.hostname === target.hostname &&
+          candidate.pathname.replace(/\/+$/, "") === target.pathname.replace(/\/+$/, "")
+        );
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return -1;
+  }
+}
+
+function aliasInlineCitations(content: string, sources: ResearchResult[]): string {
+  let rewritten = content;
+
+  rewritten = rewritten.replace(/\[S(\d+)\]/g, (_match, rawIndex: string) => {
+    const index = Number(rawIndex) - 1;
+    return index >= 0 && index < sources.length ? sourceAlias(index) : "";
+  });
+
+  rewritten = rewritten.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    (_match, _label: string, url: string) => {
+      const sourceIndex = findSourceIndexByUrl(url, sources);
+      return sourceIndex >= 0 ? sourceAlias(sourceIndex) : "";
+    },
+  );
+
+  for (let index = 0; index < sources.length; index += 1) {
+    const rawUrl = sources[index]?.url;
+    if (!rawUrl) continue;
+    const escaped = escapeRegExp(rawUrl);
+    rewritten = rewritten.replace(new RegExp(escaped, "gi"), sourceAlias(index));
+  }
+
+  rewritten = rewritten.replace(/https?:\/\/[^\s)]+/gi, "");
+  rewritten = rewritten.replace(/\s{2,}/g, " ").trim();
+  return rewritten;
+}
+
+function looksLikeJudgeJson(content: string): boolean {
+  return /"winner"\s*:|"proScores"\s*:|"conScores"\s*:|"argumentStrength"\s*:|proScores\s*:\s*\{/i.test(
+    content,
+  );
+}
+
+function cleanReadableProse(content: string): string {
+  return content
+    .replace(/```(?:json)?/gi, "")
+    .replace(/Unique angle\s*\([^)]+\):[^.]+\./gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function buildNonRepeatFallback(params: {
+  agent: DebateAgent;
+  role: AgentRole;
+  topic: string;
+  sources: ResearchResult[];
+}): string {
+  const cite1 = params.sources[0] ? sourceAlias(0) : "";
+  const cite2 = params.sources[1] ? sourceAlias(1) : cite1;
+  const digest = buildEvidenceDigest(params.sources);
+
+  if (params.role === "opening") {
+    return `From the ${params.agent.perspective.toLowerCase()} perspective, "${params.topic}" should be judged on measurable outcomes and practical constraints ${cite1} ${cite2}. ${digest}`.trim();
+  }
+  if (params.role === "rebuttal") {
+    return `That claim assumes too much certainty for the available evidence. The data is conditional, and edge-case risks remain important ${cite1} ${cite2}. ${digest}`.trim();
+  }
+  if (params.role === "closing") {
+    return `Final position: move forward only with clear guardrails, verification loops, and rollback triggers ${cite1} ${cite2}. ${digest}`.trim();
+  }
+  return `A staged rollout is strongest here: pilot first, monitor outcomes, then expand only if evidence remains positive ${cite1} ${cite2}. ${digest}`.trim();
+}
+
+function finalizeAgentContent(params: {
+  raw: string;
+  agent: DebateAgent;
+  role: AgentRole;
+  topic: string;
+  sources: ResearchResult[];
+}): string {
+  const digest = buildEvidenceDigest(params.sources);
+  const baseFallback = buildNonRepeatFallback(params);
+
+  let content = cleanReadableProse(params.raw);
+  if (!content || looksLikeJudgeJson(content)) {
+    content = baseFallback;
+  }
+
+  content = aliasInlineCitations(content, params.sources);
+  if (!/\[\d+\]/.test(content) && params.sources.length > 0) {
+    content = `${content} ${sourceAlias(0)}${params.sources[1] ? ` ${sourceAlias(1)}` : ""}`.trim();
+  }
+
+  if (digest && !/Evidence snapshot:/i.test(content)) {
+    content = `${content} ${digest}`.trim();
+  }
+
+  content = content.replace(/\s{2,}/g, " ").trim();
+  if (!/[.!?]$/.test(content)) content = `${content}.`;
+  return content;
 }
 
 function parseJsonArray(raw: string): unknown {
@@ -81,9 +314,10 @@ Respond ONLY with valid JSON array:
           "tests the strongest claim and its weakest assumption",
         route: candidate.route || route.id,
         model: candidate.model || route.model,
-        tools: Array.isArray(candidate.tools) && candidate.tools.length
-          ? candidate.tools
-          : route.tools,
+        tools:
+          Array.isArray(candidate.tools) && candidate.tools.length
+            ? candidate.tools
+            : route.tools,
       };
     });
 
@@ -96,20 +330,24 @@ Respond ONLY with valid JSON array:
 async function generateArgument(params: {
   topic: string;
   agent: DebateAgent;
-  role: "opening" | "argument" | "rebuttal" | "closing";
-  researchSummary: string;
+  role: AgentRole;
+  researchSources: ResearchResult[];
   transcriptSoFar: string;
 }): Promise<string> {
+  const researchContext = formatResearchContext(params.researchSources);
   const systemPrompt = `You are ${params.agent.name}, a debate agent with this perspective: ${params.agent.perspective}.
 Your stance: ${params.agent.stance}
 TokenRouter route: ${params.agent.route}
 Tools available: ${params.agent.tools.join(", ")}
 Topic: "${params.topic}"
-Use concise, persuasive language (90-140 words). Ground claims in the research context. No markdown headers.`;
+Write concise persuasive prose (95-145 words). Use clear human language.
+Use citations only as aliases [1], [2], [3]. Do not output raw URLs.
+Include one concrete data takeaway from the provided research snippets.
+No JSON. No markdown headers. No code blocks.`;
 
   const userPrompt = `Role: ${params.role}
 Research context:
-${params.researchSummary}
+${researchContext || "No external sources available."}
 
 Conversation so far:
 ${params.transcriptSoFar || "None yet."}
@@ -204,9 +442,12 @@ Respond ONLY with valid JSON:
 }
 
 export async function runDebate(sessionId: string): Promise<void> {
+  if (activeDebates.has(sessionId)) return;
+
   const session = getSession(sessionId);
   if (!session) throw new Error("Session not found");
 
+  activeDebates.add(sessionId);
   setDebateStatus(sessionId, "running");
   updateSessionPhase(sessionId, "debate");
 
@@ -217,47 +458,107 @@ export async function runDebate(sessionId: string): Promise<void> {
     ]);
     const allResearch = [...proResearch, ...conResearch];
 
-    const proSummary = await summarizeResearchInSandbox(
-      proResearch.map((r) => `${r.title}: ${r.snippet}`),
-    );
-    const conSummary = await summarizeResearchInSandbox(
-      conResearch.map((r) => `${r.title}: ${r.snippet}`),
-    );
     const combinedSummary = await summarizeResearchInSandbox(
-      allResearch.map((r) => `${r.title}: ${r.snippet}`),
+      allResearch.map((item) => `${item.title}: ${item.snippet}`),
+      "combined-research",
     );
 
     const agents = await selectAgents({
       topic: session.topic,
       researchSummary: combinedSummary,
     });
+    const daytonaSandboxes = await provisionDaytonaSandboxes(
+      agents.map((agent) => `${sessionId}-${agent.id}`),
+    );
+    const sandboxProbeByLabel = new Map(
+      await Promise.all(
+        agents.map(async (agent) => {
+          const label = `${sessionId}-${agent.id}`;
+          const probe = await runInDaytona("print('sandbox-ready')", "python", label);
+          return [label, probe] as const;
+        }),
+      ),
+    );
+    const sandboxByLabel = new Map(
+      daytonaSandboxes.map((sandbox) => [sandbox.label, sandbox]),
+    );
+
     setSessionAgents(sessionId, agents);
     agents.forEach((agent) => {
+      const label = `${sessionId}-${agent.id}`;
+      const sandbox = sandboxByLabel.get(label);
+      const probe = sandboxProbeByLabel.get(label);
+      const sandboxDetails = sandbox
+        ? `Sandbox ${sandbox.id} (${sandbox.mode}, probe exit ${probe?.exitCode ?? 0})`
+        : "Sandbox not provisioned";
+
       appendMessage(sessionId, {
         id: uuidv4(),
         speaker: agent.id,
         agentName: agent.name,
         perspective: agent.perspective,
         route: agent.route,
-        content: `I selected myself for the ${agent.perspective.toLowerCase()} lens. TokenRouter assigned ${agent.route} on ${agent.model}, with ${agent.tools.join(" + ")} as supporting tools. I will argue by checking: ${agent.stance}.`,
-        sources: allResearch.slice(0, 3).map((r) => r.url),
+        content: `${agent.name} is active on ${agent.route} (${agent.model}) with ${agent.tools.join(" + ")}. ${sandboxDetails}. Focus: ${agent.stance}.`,
+        sources: allResearch.slice(0, 3).map((item) => item.url),
         createdAt: Date.now(),
       });
     });
 
+    let lastTurnTimestamp = 0;
+
     const addTurn = async (
       agent: DebateAgent,
-      roleKey: "opening" | "argument" | "rebuttal" | "closing",
+      roleKey: AgentRole,
       transcriptSoFar: string,
       sources: ResearchResult[],
     ) => {
-      const content = await generateArgument({
-        topic: session.topic,
-        agent,
-        role: roleKey,
-        researchSummary: agent.route === "risk-ethics" ? conSummary : proSummary,
-        transcriptSoFar,
-      });
+      const waitFor = MIN_TURN_INTERVAL_MS - (Date.now() - lastTurnTimestamp);
+      if (waitFor > 0) await sleep(waitFor);
+
+      const selectedSources = pickResearchForAgent(agent, sources);
+      const messageHistory =
+        getSession(sessionId)?.messages.map((message) => message.content) ?? [];
+
+      let content = "";
+      let attempts = 0;
+
+      while (attempts <= MAX_GENERATION_RETRIES) {
+        const generated = await generateArgument({
+          topic: session.topic,
+          agent,
+          role: roleKey,
+          researchSources: selectedSources,
+          transcriptSoFar,
+        });
+
+        content = finalizeAgentContent({
+          raw: generated,
+          agent,
+          role: roleKey,
+          topic: session.topic,
+          sources: selectedSources,
+        });
+
+        if (!looksLikeRepeat(content, messageHistory)) break;
+        attempts += 1;
+      }
+
+      if (!content || looksLikeRepeat(content, messageHistory)) {
+        content = buildNonRepeatFallback({
+          agent,
+          role: roleKey,
+          topic: session.topic,
+          sources: selectedSources,
+        });
+      }
+
+      if (hasExactDuplicate(content, messageHistory)) {
+        const digest = buildEvidenceDigest(selectedSources);
+        content = `${content} Additional emphasis: ${agent.stance}. ${digest}`.replace(
+          /\s{2,}/g,
+          " ",
+        );
+      }
 
       appendMessage(sessionId, {
         id: uuidv4(),
@@ -266,18 +567,22 @@ export async function runDebate(sessionId: string): Promise<void> {
         perspective: agent.perspective,
         route: agent.route,
         content,
-        sources: sources.map((r) => r.url),
+        sources: selectedSources.map((item) => item.url),
         createdAt: Date.now(),
       });
+
+      lastTurnTimestamp = Date.now();
     };
 
     let transcriptSoFar = "";
 
-    for (let round = 0; round < ROUNDS; round++) {
+    for (let round = 0; round < ROUNDS; round += 1) {
       for (const agent of agents) {
+        const roleKey: AgentRole =
+          round === 0 ? "opening" : round === 1 ? "argument" : "rebuttal";
         await addTurn(
           agent,
-          round === 0 ? "opening" : "rebuttal",
+          roleKey,
           transcriptSoFar,
           agent.route === "risk-ethics" ? conResearch : allResearch,
         );
@@ -298,6 +603,8 @@ export async function runDebate(sessionId: string): Promise<void> {
     const message = error instanceof Error ? error.message : "Debate failed";
     setDebateStatus(sessionId, "error", message);
     throw error;
+  } finally {
+    activeDebates.delete(sessionId);
   }
 }
 
@@ -310,7 +617,7 @@ export async function finalizeSession(sessionId: string): Promise<JudgeVerdict |
   const audienceShift = describeAudienceShift(pre, post);
 
   const transcript = session.messages
-    .map((m) => `[${m.speaker.toUpperCase()}] ${m.content}`)
+    .map((message) => `[${message.speaker.toUpperCase()}] ${message.content}`)
     .join("\n\n");
 
   const verdict = await runJudge({

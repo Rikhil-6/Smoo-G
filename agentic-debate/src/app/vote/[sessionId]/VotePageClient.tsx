@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { COPY } from "@/lib/copy";
+import { apiUrl } from "@/lib/client-api";
 import type { PollSnapshot, Stance } from "@/lib/types";
 
 export default function VotePageClient() {
@@ -19,7 +20,7 @@ export default function VotePageClient() {
   useEffect(() => {
     if (!params.sessionId) return;
 
-    fetch(`/api/sessions/${params.sessionId}`)
+    fetch(apiUrl(`/api/sessions/${params.sessionId}`))
       .then((res) => res.json())
       .then((data) => {
         setTopic(data.session?.topic ?? "");
@@ -32,7 +33,7 @@ export default function VotePageClient() {
     if (!params.sessionId) return;
 
     const interval = setInterval(() => {
-      fetch(`/api/sessions/${params.sessionId}`)
+      fetch(apiUrl(`/api/sessions/${params.sessionId}`))
         .then((res) => res.json())
         .then((data) => {
           setPoll(phase === "post" ? data.postPoll : data.prePoll);
@@ -48,10 +49,10 @@ export default function VotePageClient() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/sessions/${params.sessionId}/vote`, {
+      const response = await fetch(apiUrl(`/api/sessions/${params.sessionId}`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stance, phase }),
+        body: JSON.stringify({ action: "vote", stance, phase }),
       });
 
       if (!response.ok) {

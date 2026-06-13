@@ -17,6 +17,12 @@ export async function fetchResearch(
   const zone = process.env.BRIGHTDATA_ZONE ?? "serp_api1";
 
   if (!apiKey) {
+    if (browserWss) {
+      const browserResults = await fetchResearchViaBrowserWss(query, side, browserWss);
+      if (browserResults.length > 0) {
+        return browserResults;
+      }
+    }
     return mockResearch(query, side, Boolean(browserWss));
   }
 
@@ -50,6 +56,92 @@ export async function fetchResearch(
     console.error("Bright Data fetch failed:", error);
     return mockResearch(query, side, Boolean(browserWss));
   }
+}
+
+async function fetchResearchViaBrowserWss(
+  query: string,
+  side: "pro" | "con",
+  browserWss: string,
+): Promise<ResearchResult[]> {
+  const searchQuery =
+    side === "pro"
+      ? `${query} benefits evidence supporting`
+      : `${query} risks evidence against`;
+
+  try {
+    const playwright = await import("playwright-core");
+    const browser = await playwright.chromium.connectOverCDP(browserWss, {
+      timeout: 30_000,
+    });
+
+    const context = browser.contexts()[0] ?? await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(
+      `https://duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&ia=web`,
+      { waitUntil: "domcontentloaded", timeout: 30_000 },
+    );
+
+    const items = await page.evaluate(() => {
+      const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href^='http']"));
+      const rows: Array<{ title: string; url: string; snippet: string }> = [];
+
+      for (const link of links) {
+        const url = link.href;
+        const title = (link.textContent || "").replace(/\s+/g, " ").trim();
+        if (!title || title.length < 15) continue;
+        if (url.includes("duckduckgo.com")) continue;
+
+        const container = link.closest("article, div, li");
+        const snippet = (container?.textContent || "")
+          .replace(/\s+/g, " ")
+          .replace(title, "")
+          .trim()
+          .slice(0, 220);
+
+        rows.push({
+          title,
+          url,
+          snippet: snippet || `Retrieved via BrightData browser search for "${title}"`,
+        });
+      }
+
+      return rows;
+    });
+
+    await page.close();
+    await browser.close();
+
+    const deduped = dedupeResearch(items).slice(0, 6);
+    return deduped.map((item) => ({
+      title: item.title,
+      url: item.url,
+      snippet: item.snippet,
+    }));
+  } catch (error) {
+    console.error("Bright Data browser WSS retrieval failed:", error);
+    return [];
+  }
+}
+
+function dedupeResearch(
+  rows: Array<{ title: string; url: string; snippet: string }>,
+): Array<{ title: string; url: string; snippet: string }> {
+  const seen = new Set<string>();
+  const results: Array<{ title: string; url: string; snippet: string }> = [];
+
+  for (const row of rows) {
+    try {
+      const normalized = new URL(row.url);
+      const key = `${normalized.hostname}${normalized.pathname}`.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push(row);
+    } catch {
+      continue;
+    }
+  }
+
+  return results;
 }
 
 function parseSearchResults(html: string): ResearchResult[] {

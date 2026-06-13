@@ -23,6 +23,7 @@ export interface Vote {
   id: string;
   stance: Stance;
   phase: "pre" | "post";
+  voterId?: string;
   createdAt: number;
 }
 

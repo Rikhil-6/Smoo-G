@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { finalizeSession, runDebate } from "@/lib/agents/orchestrator";
+import { runDebate } from "@/lib/agents/orchestrator";
 import { getSession } from "@/lib/store";
 
 export async function POST(

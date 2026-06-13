@@ -10,7 +10,8 @@ import { YesNoPollChart } from "./YesNoPollChart";
 interface TopicPollSlideProps {
   topic: string;
   onTopicChange: (value: string) => void;
-  voteUrl: string;
+  telegramVoteUrl: string;
+  botUsername?: string;
   poll: PollSnapshot;
   loading: boolean;
   error: string | null;
@@ -22,7 +23,8 @@ interface TopicPollSlideProps {
 export function TopicPollSlide({
   topic,
   onTopicChange,
-  voteUrl,
+  telegramVoteUrl,
+  botUsername,
   poll,
   loading,
   error,
@@ -31,6 +33,8 @@ export function TopicPollSlide({
   sessionReady,
 }: TopicPollSlideProps) {
   const canConfirm = topic.trim().length >= 5 && !sessionReady;
+  const hasTelegramVote = Boolean(telegramVoteUrl);
+  const normalizedBot = botUsername?.replace(/^@/, "");
 
   return (
     <SlideShell
@@ -44,7 +48,7 @@ export function TopicPollSlide({
               disabled={!canConfirm || loading}
               ariaLabel={COPY.topic.ctaConfirm}
             >
-              {loading ? "Locking…" : COPY.topic.ctaConfirm}
+              {loading ? "Locking..." : COPY.topic.ctaConfirm}
             </PrimaryButton>
           ) : (
             <>
@@ -67,7 +71,10 @@ export function TopicPollSlide({
 
           {!sessionReady ? (
             <div className="mt-3">
-              <label htmlFor="debate-topic" className="font-display text-xl font-bold text-[var(--ice)] sm:text-2xl">
+              <label
+                htmlFor="debate-topic"
+                className="font-display text-xl font-bold text-[var(--ice)] sm:text-2xl"
+              >
                 {COPY.topic.inputLabel}
               </label>
               <p id="topic-hint" className="mt-2 max-w-3xl text-sm text-[var(--text-muted)]">
@@ -76,7 +83,7 @@ export function TopicPollSlide({
               <textarea
                 id="debate-topic"
                 value={topic}
-                onChange={(e) => onTopicChange(e.target.value)}
+                onChange={(event) => onTopicChange(event.target.value)}
                 aria-describedby="topic-hint"
                 placeholder={COPY.topic.inputPlaceholder}
                 rows={2}
@@ -101,39 +108,63 @@ export function TopicPollSlide({
           )}
         </header>
 
-        {sessionReady && voteUrl ? (
+        {sessionReady && hasTelegramVote ? (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
-            <ScanFrame label="Scan to vote" size="xl">
+            <ScanFrame label="Scan to open Telegram vote" size="xl">
               <div className="flex h-full flex-col items-center justify-center">
                 <div
                   className="rounded-sm bg-white p-4 sm:p-5"
                   role="img"
-                  aria-label="QR code for pre-debate yes or no vote"
+                  aria-label="QR code for Telegram pre-debate vote"
                 >
-                  <QRCodeSVG
-                    value={`${voteUrl}?phase=pre`}
-                    size={240}
-                    level="M"
-                    includeMargin
-                  />
+                  <QRCodeSVG value={telegramVoteUrl} size={240} level="M" includeMargin />
                 </div>
                 <p className="font-mono-label mt-5 text-center text-xs uppercase tracking-[0.25em] text-[var(--text-muted)]">
-                  Yes · No · No take-backs
+                  Vote in Telegram · Yes / No
                 </p>
+                <a
+                  href={telegramVoteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 rounded border border-white/20 px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--blood)]/50 hover:text-[var(--ice)]"
+                >
+                  Open Telegram vote
+                </a>
+                {normalizedBot && (
+                  <p className="mt-2 text-xs text-[var(--text-muted)]">
+                    Bot:{" "}
+                    <a
+                      href={`https://t.me/${normalizedBot}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-2 hover:text-[var(--ice)]"
+                    >
+                      @{normalizedBot}
+                    </a>
+                  </p>
+                )}
               </div>
             </ScanFrame>
 
-            <YesNoPollChart
-              title="Live baseline"
-              poll={poll}
-              live
-              variant="dramatic"
-            />
+            <div className="flex min-h-0 flex-col gap-4">
+              <YesNoPollChart title="Live baseline" poll={poll} live variant="dramatic" />
+              <div className="panel-glass border border-sky-400/20 bg-sky-950/20 p-3">
+                <p className="font-mono-label text-[10px] uppercase tracking-widest text-sky-200">
+                  Telegram-only voting
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+                  If someone opens the bot directly, they can type <strong>/start</strong> and it
+                  will auto-bind to the latest active session.
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center border border-dashed border-white/10 bg-[var(--bg-panel)]/40 px-6">
             <p className="max-w-md text-center text-sm leading-relaxed text-[var(--text-muted)]">
-              Your statement appears here. The room will be asked whether they believe it — before any machine opens its mouth.
+              {!sessionReady
+                ? "Your statement appears here. The room will be asked whether they believe it before any machine opens its mouth."
+                : "Telegram voting is not configured yet. Set TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_USERNAME (or NEXT_PUBLIC_TELEGRAM_BOT_USERNAME), then refresh."}
             </p>
           </div>
         )}

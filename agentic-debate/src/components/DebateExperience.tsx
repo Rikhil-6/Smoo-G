@@ -6,6 +6,7 @@ import { DebateSlide } from "@/components/slides/DebateSlide";
 import { LandingSlide } from "@/components/slides/LandingSlide";
 import { PostPollSlide } from "@/components/slides/PostPollSlide";
 import { TopicPollSlide } from "@/components/slides/TopicPollSlide";
+import { apiUrl, getApiBaseUrl } from "@/lib/client-api";
 import { buildConclusion } from "@/lib/poll-utils";
 import type {
   DebateMessage,
@@ -22,6 +23,15 @@ const EMPTY_POLL: PollSnapshot = {
   noPercent: 0,
 };
 
+function buildTelegramVoteUrl(
+  botUsername: string,
+  sessionId: string,
+  phase: "pre" | "post",
+): string {
+  const cleanBot = botUsername.replace(/^@/, "");
+  return `https://t.me/${cleanBot}?start=vote_${sessionId}_${phase}`;
+}
+
 export function DebateExperience() {
   const [slide, setSlide] = useState<SlideIndex>(1);
   const [topic, setTopic] = useState("");
@@ -29,36 +39,75 @@ export function DebateExperience() {
   const [prePoll, setPrePoll] = useState<PollSnapshot>(EMPTY_POLL);
   const [postPoll, setPostPoll] = useState<PollSnapshot>(EMPTY_POLL);
   const [messages, setMessages] = useState<DebateMessage[]>([]);
+  const [debateStatus, setDebateStatus] =
+    useState<DebateSession["debateStatus"]>("idle");
+  const [debateError, setDebateError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [appBaseUrl, setAppBaseUrl] = useState("");
+  const [telegramBotUsername, setTelegramBotUsername] = useState("");
+  const [integrationSummary, setIntegrationSummary] = useState("");
+  const [apiHealth, setApiHealth] = useState<"checking" | "online" | "offline">(
+    "checking",
+  );
+  const [apiTarget, setApiTarget] = useState("");
 
-  const baseUrl =
-    appBaseUrl ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "");
+  const telegramPreVoteUrl = useMemo(() => {
+    if (!telegramBotUsername || !session?.id) return "";
+    return buildTelegramVoteUrl(telegramBotUsername, session.id, "pre");
+  }, [telegramBotUsername, session?.id]);
 
-  const voteUrl = useMemo(() => {
-    if (!session) return "";
-    return `${baseUrl}/vote/${session.id}`;
-  }, [baseUrl, session]);
+  const telegramPostVoteUrl = useMemo(() => {
+    if (!telegramBotUsername || !session?.id) return "";
+    return buildTelegramVoteUrl(telegramBotUsername, session.id, "post");
+  }, [telegramBotUsername, session?.id]);
 
   useEffect(() => {
-    fetch("/api/network-url")
+    queueMicrotask(() => {
+      const target =
+        getApiBaseUrl() ||
+        (typeof window !== "undefined" ? window.location.origin : "");
+      setApiTarget(target);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetch(apiUrl("/api/integrations/status"), { method: "GET" })
+      .then((response) => {
+        setApiHealth(response.ok ? "online" : "offline");
+      })
+      .catch(() => setApiHealth("offline"));
+  }, []);
+
+  useEffect(() => {
+    fetch(apiUrl("/api/network-url"))
       .then((response) => response.json())
       .then((data) => {
-        if (data.appUrl) setAppBaseUrl(data.appUrl);
+        if (data.telegramBotUsername) {
+          setTelegramBotUsername(String(data.telegramBotUsername));
+        }
       })
       .catch(() => {
-        if (typeof window !== "undefined") setAppBaseUrl(window.location.origin);
+        setTelegramBotUsername("");
+      });
+  }, []);
+
+  useEffect(() => {
+    fetch(apiUrl("/api/integrations/status"))
+      .then((response) => response.json())
+      .then((data) => {
+        if (data?.summary) setIntegrationSummary(String(data.summary));
+      })
+      .catch(() => {
+        setIntegrationSummary("Integration status unavailable");
       });
   }, []);
 
   const refreshSession = useCallback(async (id: string) => {
-    const response = await fetch(`/api/sessions/${id}`);
+    const response = await fetch(apiUrl(`/api/sessions/${id}`));
     if (!response.ok) return;
     const data = await response.json();
     setSession(data.session);
+    setDebateStatus(data.session?.debateStatus ?? "idle");
     setPrePoll(data.prePoll);
     setPostPoll(data.postPoll);
     if (data.session.messages?.length) {
@@ -77,36 +126,65 @@ export function DebateExperience() {
   }, [session?.id, slide, refreshSession]);
 
   useEffect(() => {
+    if (!session?.id || !telegramBotUsername || slide < 2 || slide > 4) return;
+
+    const pollTelegramBridge = () => {
+      fetch(apiUrl("/api/telegram/poll"), { method: "POST" }).catch(() => {
+        // silent retry on next tick
+      });
+    };
+
+    pollTelegramBridge();
+    const interval = setInterval(pollTelegramBridge, 1600);
+    return () => clearInterval(interval);
+  }, [session?.id, telegramBotUsername, slide]);
+
+  useEffect(() => {
     if (slide !== 3 || !session?.id) return;
 
-    setMessages([]);
-
-    fetch(`/api/sessions/${session.id}/debate`, { method: "POST" }).catch(
-      console.error,
-    );
+    fetch(apiUrl(`/api/sessions/${session.id}`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "debate" }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.error || "Could not start debate");
+        }
+      })
+      .catch((caughtError) => {
+        setDebateStatus("error");
+        setDebateError(
+          caughtError instanceof Error ? caughtError.message : "Could not start debate",
+        );
+      });
 
     const pollDebate = setInterval(() => {
-      fetch(`/api/sessions/${session.id}/debate`)
+      fetch(apiUrl(`/api/sessions/${session.id}?view=debate`))
         .then((res) => res.json())
         .then((data) => {
-          if (data.messages?.length) {
-            setMessages(data.messages);
-          }
+          setDebateStatus(data.debateStatus ?? "running");
+          setDebateError(data.error ?? null);
+          setMessages(Array.isArray(data.messages) ? data.messages : []);
         })
-        .catch(console.error);
-    }, 3000);
+        .catch(() => {
+          setDebateStatus("error");
+          setDebateError("Debate polling failed");
+        });
+    }, 1200);
 
     return () => {
       clearInterval(pollDebate);
     };
-  }, [slide, session?.id, topic]);
+  }, [slide, session?.id]);
 
   async function confirmTopic() {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/sessions", {
+      const response = await fetch(apiUrl("/api/sessions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: topic.trim() }),
@@ -121,8 +199,8 @@ export function DebateExperience() {
       setSession(data.session);
       setPrePoll(EMPTY_POLL);
       setPostPoll(EMPTY_POLL);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -130,7 +208,10 @@ export function DebateExperience() {
 
   function goToDebate() {
     if (session?.id) {
-      fetch(`/api/sessions/${session.id}/vote`, {
+      setMessages([]);
+      setDebateStatus("running");
+      setDebateError(null);
+      fetch(apiUrl(`/api/sessions/${session.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phase: "debate" }),
@@ -141,7 +222,7 @@ export function DebateExperience() {
 
   function goToPostPoll() {
     if (session?.id) {
-      fetch(`/api/sessions/${session.id}/vote`, {
+      fetch(apiUrl(`/api/sessions/${session.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phase: "post_poll" }),
@@ -152,7 +233,7 @@ export function DebateExperience() {
 
   function goToConclusion() {
     if (session?.id) {
-      fetch(`/api/sessions/${session.id}/vote`, {
+      fetch(apiUrl(`/api/sessions/${session.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phase: "complete" }),
@@ -168,6 +249,8 @@ export function DebateExperience() {
     setPrePoll(EMPTY_POLL);
     setPostPoll(EMPTY_POLL);
     setMessages([]);
+    setDebateStatus("idle");
+    setDebateError(null);
     setError(null);
   }
 
@@ -175,18 +258,23 @@ export function DebateExperience() {
 
   return (
     <>
+      <div
+        suppressHydrationWarning
+        className="pointer-events-none fixed right-4 top-3 z-[60] rounded border border-white/15 bg-black/60 px-3 py-2 text-[10px] uppercase tracking-wider text-[var(--text-secondary)]"
+      >
+        API {apiHealth} · {apiTarget}
+      </div>
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
       <main id="main-content">
-        {slide === 1 && (
-          <LandingSlide onBegin={() => setSlide(2)} />
-        )}
+        {slide === 1 && <LandingSlide onBegin={() => setSlide(2)} />}
         {slide === 2 && (
           <TopicPollSlide
             topic={topic}
             onTopicChange={setTopic}
-            voteUrl={voteUrl}
+            telegramVoteUrl={telegramPreVoteUrl}
+            botUsername={telegramBotUsername}
             poll={prePoll}
             loading={loading}
             error={error}
@@ -199,13 +287,17 @@ export function DebateExperience() {
           <DebateSlide
             topic={topic}
             messages={messages}
+            debateStatus={debateStatus}
+            debateError={debateError}
+            integrationSummary={integrationSummary}
             onComplete={goToPostPoll}
           />
         )}
         {slide === 4 && session && (
           <PostPollSlide
             topic={topic}
-            voteUrl={voteUrl}
+            telegramVoteUrl={telegramPostVoteUrl}
+            botUsername={telegramBotUsername}
             prePoll={prePoll}
             postPoll={postPoll}
             onContinue={goToConclusion}
@@ -216,6 +308,7 @@ export function DebateExperience() {
             conclusion={conclusion}
             prePoll={prePoll}
             postPoll={postPoll}
+            messages={messages}
             onRestart={restart}
           />
         )}

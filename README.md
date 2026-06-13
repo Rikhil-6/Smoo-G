@@ -1,8 +1,8 @@
 # Smoo-G
 
-Smoo-G’s main surface is now the `agentic-debate/` Next app pulled from the `agentic-debate` branch.
+Main app lives in `agentic-debate/` (Next.js).
 
-## Main App
+## Run locally
 
 ```powershell
 cd agentic-debate
@@ -10,32 +10,57 @@ npm install
 npm run dev
 ```
 
-The dev script binds to `0.0.0.0` so QR voting works from phones on the same network. The app also exposes `/api/network-url` to prefer a LAN URL for QR codes instead of `127.0.0.1`.
+## QR URL behavior
 
-## Current Capabilities
+`/api/network-url` now prioritizes public hosts for QR:
 
-- Live topic session with pre/post QR voting.
-- Agent roster chosen by Kimi/TokenRouter from the topic plus research summary.
-- BrightData-backed research path with graceful fallback when only the browser WSS is configured.
-- Daytona sandbox summary path with fail-soft behavior if the run endpoint differs.
-- Multi-perspective argument chat with agent names, lenses, routes, and supporting source URLs.
+1. Runtime override from `POST /api/network-url`
+2. `NEXT_PUBLIC_QR_BASE_URL`, `QR_PUBLIC_URL`, `PUBLIC_APP_URL`, `DAYTONA_PUBLIC_URL`
+3. Vercel envs (`VERCEL_PROJECT_PRODUCTION_URL`, `VERCEL_BRANCH_URL`, `VERCEL_URL`)
+4. Forwarded host/proto (proxy)
+5. LAN/local fallback
 
-## Local Config
+Telegram fallback is supported for cross-network cases where direct QR cannot reach your host.
 
-Use `agentic-debate/.env.local` for real credentials. It is ignored by git. Start from:
+### Set public QR target at runtime
 
 ```powershell
-Copy-Item agentic-debate/.env.example agentic-debate/.env.local
+Invoke-RestMethod -Method Post `
+  -Uri http://localhost:3000/api/network-url `
+  -ContentType "application/json" `
+  -Body '{"publicUrl":"https://your-public-host.com"}'
 ```
 
-Key integrations:
+## Deploy options (internet-accessible QR)
+
+### Option A: Vercel (recommended for quick global access)
+
+1. Push repo to GitHub.
+2. Import repo in Vercel.
+3. Set env vars in Vercel Project Settings (Production):
+   - `DAYTONA_API_KEY`
+   - `DAYTONA_API_URL` (optional, default already set)
+   - `DAYTONA_PROXY_URL` (optional, default already set)
+   - `BRIGHTDATA_API_KEY` or `BRIGHTDATA_PLAYWRIGHT_WSS`
+   - `MOONSHOT_API_KEY`
+4. Redeploy.
+5. QR will use the Vercel domain automatically.
+
+### Option B: Daytona-hosted app URL
+
+1. Deploy app inside your Daytona sandbox/container.
+2. Get the public preview/domain URL for app port.
+3. Set `DAYTONA_PUBLIC_URL` (or runtime `publicUrl`) to that public URL.
+4. QR now resolves globally (not LAN-limited).
+
+## Key env vars (`agentic-debate/.env.local`)
 
 - `DAYTONA_API_KEY`
-- `BRIGHTDATA_API_KEY` or `BRIGHTDATA_PLAYWRIGHT_WSS`
-- `MOONSHOT_API_KEY` for Kimi
-- `TOKENROUTER_API_KEY` when a hosted router is available
-- `NEXT_PUBLIC_APP_URL` when you want to force a specific QR base URL
-
-## Legacy Prototype
-
-The older static simulator remains in `frontend/` as reference material, but new work should target `agentic-debate/`.
+- `DAYTONA_API_URL`
+- `DAYTONA_PROXY_URL`
+- `BRIGHTDATA_API_KEY` / `BRIGHTDATA_PLAYWRIGHT_WSS`
+- `MOONSHOT_API_KEY`
+- `NEXT_PUBLIC_QR_BASE_URL` (optional explicit override)
+- `NEXT_PUBLIC_API_BASE_URL` (if frontend and API are split)
+- `TELEGRAM_BOT_USERNAME` (or `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`) for QR fallback
+- `TELEGRAM_BOT_TOKEN` (optional, keep secret; only needed for API bot actions)
