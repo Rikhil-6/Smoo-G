@@ -7,15 +7,18 @@
   <style>
     :root {
       color-scheme: light;
-      --ink: #1d2433;
-      --muted: #657085;
-      --line: #d8dee8;
-      --panel: #ffffff;
-      --surface: #f4f7fb;
-      --accent: #206f6b;
-      --accent-2: #7a4e12;
+      --ink: #111827;
+      --muted: #5b6678;
+      --line: #d6dde8;
+      --panel: #fbfcfd;
+      --surface: #eef4f7;
+      --accent: #0f766e;
+      --accent-2: #b45309;
+      --steel: #2f4858;
+      --blueprint: #e7f0f3;
+      --success: #26734d;
       --warn: #9a3412;
-      --shadow: 0 18px 50px rgba(30, 39, 57, 0.12);
+      --shadow: 0 18px 45px rgba(31, 41, 55, 0.12);
     }
 
     * {
@@ -25,12 +28,15 @@
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Aptos", "Bahnschrift", "Segoe UI Variable", sans-serif;
       color: var(--ink);
       background:
-        linear-gradient(135deg, rgba(32, 111, 107, 0.09), transparent 34%),
-        linear-gradient(315deg, rgba(122, 78, 18, 0.08), transparent 30%),
+        linear-gradient(120deg, rgba(15, 118, 110, 0.14), transparent 30%),
+        radial-gradient(circle at 92% 8%, rgba(180, 83, 9, 0.11), transparent 30%),
+        linear-gradient(rgba(47, 72, 88, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(47, 72, 88, 0.04) 1px, transparent 1px),
         var(--surface);
+      background-size: auto, auto, 34px 34px, 34px 34px;
     }
 
     button,
@@ -81,7 +87,8 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(1.35rem, 2vw, 2rem);
+      font-family: "Aptos Display", "Bahnschrift", sans-serif;
+      font-size: clamp(1.45rem, 2.2vw, 2.4rem);
       line-height: 1.1;
     }
 
@@ -133,7 +140,7 @@
 
     .layout {
       display: grid;
-      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+      grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
       gap: 18px;
       align-items: start;
     }
@@ -148,6 +155,131 @@
 
     .panel {
       padding: 16px;
+    }
+
+    .brief {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .brief-panel {
+      min-height: 220px;
+      padding: 22px;
+      border: 1px solid rgba(47, 72, 88, 0.16);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(231, 240, 243, 0.72)),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .brief-eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .brief-title {
+      margin: 0;
+      max-width: 900px;
+      font-family: "Aptos Display", "Bahnschrift", sans-serif;
+      font-size: clamp(1.8rem, 3vw, 3.4rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .brief-copy {
+      max-width: 780px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.58;
+    }
+
+    .brief-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .media-hero {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+      min-height: 220px;
+      padding: 16px;
+      border: 1px solid rgba(47, 72, 88, 0.16);
+      border-radius: 8px;
+      background: #111827;
+      color: white;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .media-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.4), transparent 42%),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 28px);
+      pointer-events: none;
+    }
+
+    .media-hero > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .media-screen {
+      display: grid;
+      align-content: end;
+      min-height: 118px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.12), transparent),
+        rgba(255, 255, 255, 0.06);
+    }
+
+    .media-bars {
+      display: grid;
+      grid-template-columns: 0.8fr 1fr 0.55fr 0.9fr;
+      gap: 7px;
+      align-items: end;
+      height: 58px;
+    }
+
+    .media-bars i {
+      display: block;
+      border-radius: 4px 4px 0 0;
+      background: rgba(255, 255, 255, 0.64);
+    }
+
+    .media-bars i:nth-child(1) {
+      height: 34%;
+    }
+
+    .media-bars i:nth-child(2) {
+      height: 78%;
+      background: #2dd4bf;
+    }
+
+    .media-bars i:nth-child(3) {
+      height: 48%;
+    }
+
+    .media-bars i:nth-child(4) {
+      height: 64%;
+      background: #f59e0b;
     }
 
     .section {
@@ -202,18 +334,41 @@
       box-shadow: 0 0 0 3px rgba(32, 111, 107, 0.14);
     }
 
-    .range-row {
+    .stepper {
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
+      grid-template-columns: auto minmax(52px, 64px) auto;
+      gap: 8px;
       align-items: center;
     }
 
-    .counter {
-      min-width: 32px;
+    .stepper-button {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .stepper-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .stepper-value {
+      display: grid;
+      place-items: center;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
       color: var(--ink);
       font-weight: 800;
-      text-align: right;
+      text-align: center;
     }
 
     .agent-list {
@@ -449,7 +604,7 @@
 
     .runtime-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px;
     }
 
@@ -485,6 +640,192 @@
     .research-feed {
       display: grid;
       gap: 10px;
+    }
+
+    .insight-board {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.62fr);
+      gap: 14px;
+    }
+
+    .decision-map {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .decision-map h2,
+    .evidence-panel h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .signal-card {
+      min-height: 150px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .signal-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .signal-meter {
+      display: grid;
+      align-items: end;
+      height: 62px;
+      margin: 8px 0 10px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, white, #edf4f6);
+      overflow: hidden;
+    }
+
+    .signal-meter span {
+      display: block;
+      min-height: 18%;
+      border-radius: 8px 8px 0 0;
+      background: linear-gradient(180deg, #2dd4bf, var(--accent));
+    }
+
+    .signal-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .evidence-panel {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .evidence-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .evidence-card {
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .evidence-thumb {
+      display: grid;
+      place-items: center;
+      height: 58px;
+      border-radius: 8px;
+      color: white;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.85), rgba(17, 24, 39, 0.9)),
+        var(--steel);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .evidence-card strong,
+    .evidence-card span {
+      display: block;
+    }
+
+    .evidence-card span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+
+    .output-gallery {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .output-gallery h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .template-card {
+      display: grid;
+      align-content: space-between;
+      min-height: 170px;
+      padding: 12px;
+      border: 1px solid rgba(47, 72, 88, 0.14);
+      border-radius: 8px;
+      background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(231, 240, 243, 0.74)),
+        white;
+    }
+
+    .template-preview {
+      display: grid;
+      gap: 6px;
+      min-height: 82px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #111827;
+      overflow: hidden;
+    }
+
+    .template-preview span {
+      display: block;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.66);
+    }
+
+    .template-preview span:nth-child(2) {
+      width: 74%;
+      background: #2dd4bf;
+    }
+
+    .template-preview span:nth-child(3) {
+      width: 52%;
+      background: #f59e0b;
+    }
+
+    .template-card strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 0.92rem;
+    }
+
+    .template-card p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.35;
     }
 
     .research-item {
@@ -747,6 +1088,31 @@
       gap: 8px;
     }
 
+    .learner-panel {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .learner-result {
+      min-height: 74px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .learner-result strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+
     .token-policy {
       display: grid;
       grid-template-columns: 1fr minmax(120px, 0.4fr);
@@ -767,6 +1133,11 @@
 
     @media (max-width: 980px) {
       .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .brief,
+      .insight-board {
         grid-template-columns: 1fr;
       }
 
@@ -803,6 +1174,10 @@
         grid-template-columns: 1fr;
       }
 
+      .stepper {
+        grid-template-columns: auto minmax(46px, 58px) auto;
+      }
+
       .btn {
         flex: 1;
       }
@@ -810,6 +1185,8 @@
       .scoreboard,
       .agent-windows,
       .runtime-grid,
+      .signal-grid,
+      .template-grid,
       .synthesis-grid {
         grid-template-columns: 1fr;
       }
@@ -826,8 +1203,8 @@
       <div class="brand">
         <div class="mark">SG</div>
         <div>
-          <h1>Smoo-G Agent Simulator</h1>
-          <p class="subtitle">Run a compact multi-perspective debate and synthesize the tradeoffs.</p>
+          <h1>Smoo-G Intelligence Room</h1>
+          <p class="subtitle">Supervise agent research, media evidence, and decision outputs in one business workspace.</p>
         </div>
       </div>
       <div class="toolbar">
@@ -836,6 +1213,25 @@
         <button class="btn accent" id="runBtn" type="button">Run Simulation</button>
       </div>
     </header>
+
+    <section class="brief">
+      <div class="brief-panel">
+        <p class="brief-eyebrow">Agent operating brief</p>
+        <h2 class="brief-title" id="briefTitle">Turn messy evidence into a decision-grade readout.</h2>
+        <p class="brief-copy" id="briefCopy">Set the topic, choose the agent perspectives, then watch each agent collect signals, route tokens, and produce an executive synthesis you can inspect.</p>
+        <div class="brief-actions">
+          <button class="btn accent" id="briefRunBtn" type="button">Run Board Review</button>
+          <button class="btn secondary" id="briefSettingsBtn" type="button">Configure Sources</button>
+        </div>
+      </div>
+      <aside class="media-hero">
+        <p class="brief-eyebrow">VideoDB evidence stream</p>
+        <div class="media-screen">
+          <div class="media-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </div>
+        <p class="subtitle">Video, transcript, scrape, and browser findings become visual evidence blocks before synthesis.</p>
+      </aside>
+    </section>
 
     <div class="layout">
       <aside class="panel">
@@ -856,17 +1252,21 @@
           </label>
           <label>
             Rounds
-            <div class="range-row">
-              <input id="roundsInput" type="range" min="1" max="5" value="3">
-              <span class="counter" id="roundsValue">3</span>
+            <div class="stepper" role="group" aria-label="Rounds">
+              <button class="stepper-button" id="roundsDownBtn" type="button" aria-label="Decrease rounds">&minus;</button>
+              <span class="stepper-value" id="roundsValue">3</span>
+              <button class="stepper-button" id="roundsUpBtn" type="button" aria-label="Increase rounds">+</button>
             </div>
+            <input id="roundsInput" type="hidden" value="3">
           </label>
           <label>
             Agents
-            <div class="range-row">
-              <input id="agentCountInput" type="range" min="2" max="6" value="3">
-              <span class="counter" id="agentCountValue">3</span>
+            <div class="stepper" role="group" aria-label="Active agents">
+              <button class="stepper-button" id="agentCountDownBtn" type="button" aria-label="Decrease agent count">&minus;</button>
+              <span class="stepper-value" id="agentCountValue">3</span>
+              <button class="stepper-button" id="agentCountUpBtn" type="button" aria-label="Increase agent count">+</button>
             </div>
+            <input id="agentCountInput" type="hidden" value="3">
           </label>
         </section>
 
@@ -935,6 +1335,22 @@
 
         <div class="runtime-grid" id="runtimeGrid"></div>
 
+        <section class="insight-board">
+          <div class="decision-map">
+            <h2>Decision Signals</h2>
+            <div class="signal-grid" id="signalGrid"></div>
+          </div>
+          <div class="evidence-panel">
+            <h2>Evidence Sources</h2>
+            <div class="evidence-grid" id="evidenceGrid"></div>
+          </div>
+        </section>
+
+        <section class="output-gallery">
+          <h2>Business Outputs</h2>
+          <div class="template-grid" id="outputGallery"></div>
+        </section>
+
         <section class="agent-windows" id="agentWindows"></section>
 
         <section class="panel research-panel">
@@ -1002,6 +1418,8 @@
               <option value="economy">Economy</option>
               <option value="deep-reasoning">Deep reasoning</option>
               <option value="research-heavy">Research heavy</option>
+              <option value="code-specialist">Code specialist</option>
+              <option value="design-specialist">Design specialist</option>
             </select>
           </label>
         </div>
@@ -1018,6 +1436,14 @@
             Reserve For Review
             <input id="tokenReserveInput" type="number" min="0" max="80" step="5" value="20">
           </label>
+        </div>
+        <div class="learner-panel">
+          <label>
+            Learner Role Request
+            <textarea id="learnerRoleInput" rows="3">Design a business website using public evidence and video context</textarea>
+          </label>
+          <button class="btn secondary" id="learnerRecommendBtn" type="button">Recommend Route</button>
+          <div class="learner-result" id="learnerResult">The learner will suggest a route, tool stack, and agent mix from the role request.</div>
         </div>
         <div class="token-policy-list" id="tokenPolicyList"></div>
       </section>
@@ -1171,19 +1597,31 @@
     };
 
     const storageKey = "smoo-g-settings";
+    const roundMin = 1;
+    const roundMax = 5;
+    const agentMin = 2;
     const agentList = document.querySelector("#agentList");
     const agentCountInput = document.querySelector("#agentCountInput");
     const agentCountValue = document.querySelector("#agentCountValue");
+    const agentCountDownBtn = document.querySelector("#agentCountDownBtn");
+    const agentCountUpBtn = document.querySelector("#agentCountUpBtn");
     const roundsInput = document.querySelector("#roundsInput");
     const roundsValue = document.querySelector("#roundsValue");
+    const roundsDownBtn = document.querySelector("#roundsDownBtn");
+    const roundsUpBtn = document.querySelector("#roundsUpBtn");
     const runBtn = document.querySelector("#runBtn");
     const resetBtn = document.querySelector("#resetBtn");
+    const briefRunBtn = document.querySelector("#briefRunBtn");
+    const briefSettingsBtn = document.querySelector("#briefSettingsBtn");
     const topicInput = document.querySelector("#topicInput");
     const modeSelect = document.querySelector("#modeSelect");
     const transcript = document.querySelector("#transcript");
     const emptyState = document.querySelector("#emptyState");
     const agentWindows = document.querySelector("#agentWindows");
     const runtimeGrid = document.querySelector("#runtimeGrid");
+    const signalGrid = document.querySelector("#signalGrid");
+    const evidenceGrid = document.querySelector("#evidenceGrid");
+    const outputGallery = document.querySelector("#outputGallery");
     const researchFeed = document.querySelector("#researchFeed");
     const synthesisGrid = document.querySelector("#synthesisGrid");
     const activeMetric = document.querySelector("#activeMetric");
@@ -1204,6 +1642,9 @@
     const tokenFallbackProvider = document.querySelector("#tokenFallbackProvider");
     const tokenReserveInput = document.querySelector("#tokenReserveInput");
     const tokenPolicyList = document.querySelector("#tokenPolicyList");
+    const learnerRoleInput = document.querySelector("#learnerRoleInput");
+    const learnerRecommendBtn = document.querySelector("#learnerRecommendBtn");
+    const learnerResult = document.querySelector("#learnerResult");
     const perspectiveForm = document.querySelector("#perspectiveForm");
     const customPerspectiveName = document.querySelector("#customPerspectiveName");
     const customPerspectiveRole = document.querySelector("#customPerspectiveRole");
@@ -1227,6 +1668,7 @@
           ...(saved.tokenRouter || {}),
           policies: saved.tokenRouter?.policies || {}
         };
+        agentCountInput.value = clamp(state.enabled.size, agentMin, Math.max(agentMin, allPerspectives().length));
       } catch (error) {
         console.warn("Unable to load settings", error);
       }
@@ -1334,6 +1776,8 @@
             <option value="balanced" ${policy === "balanced" ? "selected" : ""}>Balanced</option>
             <option value="deep-reasoning" ${policy === "deep-reasoning" ? "selected" : ""}>Deep</option>
             <option value="research-heavy" ${policy === "research-heavy" ? "selected" : ""}>Research</option>
+            <option value="code-specialist" ${policy === "code-specialist" ? "selected" : ""}>Code</option>
+            <option value="design-specialist" ${policy === "design-specialist" ? "selected" : ""}>Design</option>
           </select>
         `;
         row.querySelector("select").addEventListener("change", (event) => {
@@ -1358,11 +1802,97 @@
       return state.tokenRouter.policies[agent.id] || state.tokenRouter.defaultRoute;
     }
 
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function keywordScore(request, keywords) {
+      return keywords.reduce((total, keyword) => {
+        const pattern = new RegExp(`\\b${escapeRegExp(keyword)}\\b`);
+        return total + (pattern.test(request) ? 1 : 0);
+      }, 0);
+    }
+
+    const learnerRules = [
+      {
+        id: "design",
+        route: "design-specialist",
+        label: "Design specialist",
+        priority: 40,
+        agents: ["Creative", "Customer", "Technical"],
+        tools: ["nanobana", "VideoDB", "Playwright"],
+        keywords: ["design", "ui", "ux", "visual", "website", "deck", "presentation", "brand", "image", "template"]
+      },
+      {
+        id: "coding",
+        route: "code-specialist",
+        label: "Code specialist",
+        priority: 35,
+        agents: ["Technical", "Business", "Ethical"],
+        tools: ["claude-code", "Daytona", "Playwright"],
+        keywords: ["code", "repo", "bug", "test", "backend", "frontend", "api", "implementation", "refactor"]
+      },
+      {
+        id: "research",
+        route: "research-heavy",
+        label: "Research heavy",
+        priority: 25,
+        agents: ["Business", "Legal", "Customer"],
+        tools: ["BrightData", "Playwright", "VideoDB"],
+        keywords: ["public", "scrape", "research", "market", "competitor", "source", "evidence", "citation", "web"]
+      },
+      {
+        id: "risk",
+        route: "deep-reasoning",
+        label: "Risk review",
+        priority: 30,
+        agents: ["Ethical", "Legal", "Technical"],
+        tools: ["Kimi", "BrightData", "Playwright"],
+        keywords: ["risk", "ethic", "legal", "policy", "privacy", "compliance", "safety", "consent", "audit"]
+      }
+    ];
+
+    function recommendLearnerRoute() {
+      const request = learnerRoleInput.value.toLowerCase();
+      const scored = learnerRules
+        .map((rule) => ({
+          ...rule,
+          score: keywordScore(request, rule.keywords)
+        }))
+        .sort((left, right) => (right.score - left.score) || (right.priority - left.priority));
+      const winner = scored.find((rule) => rule.score > 0) || learnerRules[0];
+      state.tokenRouter.defaultRoute = winner.route;
+      tokenDefaultRoute.value = winner.route;
+      learnerResult.innerHTML = `
+        <strong>${escapeHtml(winner.label)} / ${escapeHtml(winner.route)}</strong>
+        Tools: ${escapeHtml(winner.tools.join(", "))}. Agents: ${escapeHtml(winner.agents.join(", "))}. Confidence seed: ${Math.min(92, 48 + winner.score * 11)}%.
+      `;
+      renderTokenRouter();
+      renderRuntimeGrid();
+      renderAgentWindows();
+    }
+
     function renderSkillSummary() {
       const enabledCount = state.skillSources.filter((source) => source.enabled).length;
       document.documentElement.dataset.developerMode = state.developerMode ? "on" : "off";
       settingsBtn.title = `Developer settings: ${enabledCount} sources enabled`;
       renderRuntimeGrid();
+    }
+
+    function clamp(value, minimum, maximum) {
+      return Math.min(maximum, Math.max(minimum, value));
+    }
+
+    function setRounds(nextValue) {
+      roundsInput.value = clamp(Number(nextValue), roundMin, roundMax);
+      syncMetrics();
+    }
+
+    function setAgentCount(nextValue) {
+      const maximum = Math.max(agentMin, allPerspectives().length);
+      const clamped = clamp(Number(nextValue), agentMin, maximum);
+      agentCountInput.value = clamped;
+      renderAgents();
     }
 
     function exportSettings() {
@@ -1381,6 +1911,7 @@
       state.skillSources = structuredClone(defaultSkillSources);
       state.customPerspectives = [];
       state.enabled = new Set(["business", "ethical", "technical"]);
+      agentCountInput.value = state.enabled.size;
       state.tokenRouter = {
         budget: 24000,
         defaultRoute: "balanced",
@@ -1408,6 +1939,68 @@
         node.className = "runtime-chip";
         node.innerHTML = `<strong>${name}</strong><span>${match?.enabled ? match.status : category}</span>`;
         runtimeGrid.append(node);
+      });
+    }
+
+    function renderSignalGrid(scores = { alignment: 62, risk: 45 }) {
+      const signals = [
+        ["Commercial", Math.max(25, Math.min(96, scores.alignment + 8)), "Revenue case, workflow leverage, and operating lift."],
+        ["Trust", Math.max(20, Math.min(92, 100 - scores.risk + 18)), "Consent, appeal paths, transparency, and support burden."],
+        ["Evidence", Math.max(28, Math.min(94, 48 + enabledAgents().length * 8)), "VideoDB clips, browser checks, and scraped market context."]
+      ];
+      signalGrid.innerHTML = "";
+      signals.forEach(([name, value, copy]) => {
+        const node = document.createElement("article");
+        node.className = "signal-card";
+        node.innerHTML = `
+          <strong>${escapeHtml(name)} ${value}%</strong>
+          <div class="signal-meter"><span style="height: ${value}%"></span></div>
+          <p>${escapeHtml(copy)}</p>
+        `;
+        signalGrid.append(node);
+      });
+    }
+
+    function renderEvidenceGrid(topic = topicInput.value.trim()) {
+      const evidence = [
+        ["VideoDB", "Clip clusters", "Transcript moments and customer-support video signals tied to the topic."],
+        ["BrightData", "Market scan", "External pricing, policy, complaints, and competitor context."],
+        ["Playwright", "Browser proof", "Supervised page checks, screenshots, and citation-ready observations."]
+      ];
+      evidenceGrid.innerHTML = "";
+      evidence.forEach(([source, label, copy]) => {
+        const node = document.createElement("article");
+        node.className = "evidence-card";
+        node.innerHTML = `
+          <div class="evidence-thumb">${escapeHtml(source)}</div>
+          <div>
+            <strong>${escapeHtml(label)}</strong>
+            <span>${escapeHtml(copy)} ${topic ? `Current topic: ${topic}` : ""}</span>
+          </div>
+        `;
+        evidenceGrid.append(node);
+      });
+    }
+
+    function renderOutputGallery(scores = { alignment: 62, risk: 45 }) {
+      const outputs = [
+        ["Board Brief", `${scores.alignment}% alignment`, "A concise executive memo with recommendation, assumptions, and dissent."],
+        ["Evidence Wall", "VideoDB + web", "A visual source board showing clips, transcript moments, and browser proof."],
+        ["Risk Matrix", `${scores.risk}% risk`, "A tradeoff map across customer trust, compliance, operational load, and reversibility."],
+        ["Action Plan", `${enabledAgents().length} agents`, "A next-step plan with owners, gates, token route, and integration path."]
+      ];
+      outputGallery.innerHTML = "";
+      outputs.forEach(([title, stat, copy]) => {
+        const node = document.createElement("article");
+        node.className = "template-card";
+        node.innerHTML = `
+          <div>
+            <div class="template-preview" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            <strong>${escapeHtml(title)} / ${escapeHtml(stat)}</strong>
+            <p>${escapeHtml(copy)}</p>
+          </div>
+        `;
+        outputGallery.append(node);
       });
     }
 
@@ -1481,9 +2074,8 @@
     }
 
     function renderAgents() {
-      const targetCount = Number(agentCountInput.value);
       const perspectives = allPerspectives();
-      agentCountInput.max = Math.max(6, perspectives.length);
+      const targetCount = clamp(Number(agentCountInput.value), agentMin, Math.max(agentMin, perspectives.length));
       while (state.enabled.size < targetCount) {
         const next = perspectives.find((agent) => !state.enabled.has(agent.id));
         if (!next) break;
@@ -1517,14 +2109,14 @@
           } else {
             event.target.checked = true;
           }
-          agentCountInput.value = state.enabled.size;
+          agentCountInput.value = clamp(state.enabled.size, agentMin, Math.max(agentMin, allPerspectives().length));
           syncMetrics();
         });
         row.querySelector(".remove-agent").addEventListener("click", () => {
           if (!agent.custom) return;
           state.customPerspectives = state.customPerspectives.filter((item) => item.id !== agent.id);
           state.enabled.delete(agent.id);
-          agentCountInput.value = Math.max(2, Math.min(state.enabled.size, allPerspectives().length));
+          agentCountInput.value = clamp(state.enabled.size, agentMin, Math.max(agentMin, allPerspectives().length));
           saveSettings();
           renderAgents();
         });
@@ -1532,13 +2124,24 @@
       });
       renderAgentWindows();
       renderTokenRouter();
+      renderSignalGrid();
+      renderEvidenceGrid();
+      renderOutputGallery();
       syncMetrics();
     }
 
     function syncMetrics() {
-      agentCountValue.textContent = state.enabled.size;
-      roundsValue.textContent = roundsInput.value;
+      const currentRounds = clamp(Number(roundsInput.value), roundMin, roundMax);
+      const currentAgents = clamp(Number(agentCountInput.value), agentMin, Math.max(agentMin, allPerspectives().length));
+      roundsInput.value = currentRounds;
+      agentCountInput.value = currentAgents;
+      roundsValue.textContent = currentRounds;
+      agentCountValue.textContent = currentAgents;
       activeMetric.textContent = state.enabled.size;
+      roundsDownBtn.disabled = currentRounds <= roundMin;
+      roundsUpBtn.disabled = currentRounds >= roundMax;
+      agentCountDownBtn.disabled = currentAgents <= agentMin;
+      agentCountUpBtn.disabled = currentAgents >= Math.max(agentMin, allPerspectives().length);
     }
 
     function addCustomPerspective(event) {
@@ -1571,7 +2174,7 @@
       state.customPerspectives.push(agent);
       state.enabled.add(id);
       state.tokenRouter.policies[id] = state.tokenRouter.defaultRoute;
-      agentCountInput.value = state.enabled.size;
+      agentCountInput.value = clamp(state.enabled.size, agentMin, Math.max(agentMin, allPerspectives().length));
       perspectiveForm.reset();
       saveSettings();
       renderAgents();
@@ -1652,6 +2255,7 @@
       const rounds = Number(roundsInput.value);
       const agents = enabledAgents();
       renderAgentWindows(topic);
+      renderEvidenceGrid(topic);
       let turns = 0;
 
       for (let round = 1; round <= rounds; round += 1) {
@@ -1674,6 +2278,8 @@
       const scores = scoreTopic(topic);
       alignmentMetric.textContent = `${scores.alignment}%`;
       riskMetric.textContent = `${scores.risk}%`;
+      renderSignalGrid(scores);
+      renderOutputGallery(scores);
       synthesize(topic, agents, scores).forEach((item) => {
         const node = document.createElement("div");
         node.className = "takeaway";
@@ -1691,6 +2297,9 @@
       transcript.innerHTML = "";
       synthesisGrid.innerHTML = "";
       renderAgentWindows();
+      renderSignalGrid();
+      renderEvidenceGrid();
+      renderOutputGallery();
       emptyState.style.display = "grid";
       statusPill.textContent = "Ready";
       turnMetric.textContent = "0";
@@ -1698,9 +2307,12 @@
       riskMetric.textContent = "-";
     }
 
-    agentCountInput.addEventListener("input", renderAgents);
-    roundsInput.addEventListener("input", syncMetrics);
+    roundsDownBtn.addEventListener("click", () => setRounds(Number(roundsInput.value) - 1));
+    roundsUpBtn.addEventListener("click", () => setRounds(Number(roundsInput.value) + 1));
+    agentCountDownBtn.addEventListener("click", () => setAgentCount(Number(agentCountInput.value) - 1));
+    agentCountUpBtn.addEventListener("click", () => setAgentCount(Number(agentCountInput.value) + 1));
     runBtn.addEventListener("click", runSimulation);
+    briefRunBtn.addEventListener("click", runSimulation);
     resetBtn.addEventListener("click", resetSimulation);
     perspectiveForm.addEventListener("submit", addCustomPerspective);
     tokenBudgetInput.addEventListener("input", (event) => {
@@ -1723,7 +2335,9 @@
       renderRuntimeGrid();
       renderAgentWindows();
     });
+    learnerRecommendBtn.addEventListener("click", recommendLearnerRoute);
     settingsBtn.addEventListener("click", openSettings);
+    briefSettingsBtn.addEventListener("click", openSettings);
     closeSettingsBtn.addEventListener("click", closeSettings);
     settingsBackdrop.addEventListener("click", (event) => {
       if (event.target === settingsBackdrop) closeSettings();
@@ -1739,6 +2353,7 @@
     loadSettings();
     renderSkillSettings();
     renderAgents();
+    syncMetrics();
   </script>
 </body>
 </html>

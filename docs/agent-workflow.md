@@ -98,6 +98,13 @@ Production routing should also consider:
 - Cached evidence reuse.
 - User or team spend caps.
 
+The token router also has a low-level learner scaffold. It maps a plain-language role request to a route, agent mix, and tool stack. Seed examples:
+
+- design and presentation work: `design-specialist`, nanobana, VideoDB, Playwright
+- code and implementation work: `code-specialist`, Claude Code, Daytona, Playwright
+- public research work: `research-heavy`, BrightData, Playwright, VideoDB
+- risk and policy work: `deep-reasoning`, Kimi, BrightData, Playwright
+
 ## Integrations Backlog
 
 The simulator includes a developer settings panel for local configuration. Use the gear button to toggle developer mode, enable or disable skill sources, edit source URLs, and export the current JSON settings.
