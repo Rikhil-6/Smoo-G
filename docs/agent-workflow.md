@@ -18,7 +18,7 @@ Optional perspectives can be toggled in when the topic needs them:
 
 ## Runtime Direction
 
-The first implementation is static HTML, CSS, and JavaScript in `index.html`.
+The first implementation is static HTML, CSS, and JavaScript in `frontend/index.html`.
 
 That makes it easy to:
 
@@ -26,6 +26,24 @@ That makes it easy to:
 - Publish with GitHub Pages.
 - Keep UI/UX iteration fast.
 - Later replace the local response templates with real model calls.
+
+## Team Work Areas
+
+Frontend teammates should work in `frontend/`:
+
+- Agent room UI.
+- Perspective builder.
+- Supervision windows.
+- Research trace visualization.
+- Run controls and settings.
+
+Backend teammates should work in `backend/`:
+
+- Daytona workspace lifecycle.
+- BrightData and Playwright adapters.
+- VideoDB scenario ingestion.
+- Kimi model-provider adapter.
+- API and event streaming for live runs.
 
 ## Orchestration Pattern
 
